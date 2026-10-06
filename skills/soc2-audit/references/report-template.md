@@ -24,6 +24,7 @@ Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Mode: <full gap / Type 2 gap / pre
 | System | <name, cloud(s), data classes, from `.soc2/state.json`> |
 | Subservice organizations and method | <e.g. cloud provider, IdP: carve-out> |
 | Out of scope | <components, TSC, with reason> |
+| Excluded controls (`state.excluded[]`) | <ID, reason, date; shown as n/a, never listed as findings> |
 
 ## 3. Methodology
 
@@ -37,11 +38,11 @@ Limits: the assessor sees the repository and supplied documents, not the cloud a
 
 ## 4. Findings
 
-Severity: Blocker = live exposure now (secrets in repo, public data, no logging, no production backups). High = missing control on a live system, or not backfillable for the Type 2 period. Medium = partial design, manual-only evidence, or not yet built on a pre-production repo. Low = documentation gap.
+Severity: Blocker = live exposure now (secrets in repo, public data, no logging, no production backups; under Security-only the backup gap is cited as `RSK-05 → CC9.1`, with a note that AV-03 and AV-04 apply if Availability is added). High = missing control on a live system, or not backfillable for the Type 2 period. Medium = partial design, manual-only evidence, or not yet built on a pre-production repo. Low = documentation gap.
 
 | # | ID → TSC | Severity | Status | Condition | Criteria | Cause | Effect | Recommendation (for <cloud>) |
 |---|---|---|---|---|---|---|---|---|
-| 1 | AC-17 → CC6.1 | Blocker | missing | <what was observed; file path and line only, never the secret value> | <catalog Type 1 pass or Type 2 pass; TSC criterion> | <why> | <risk if left> | <rotate or revoke, remove, purge history; owner> |
+| 1 | AC-17 → CC6.1 | Blocker | missing | <what was observed; file path, line and kind from `scan.py --secrets` only, never the secret value> | <catalog Type 1 pass or Type 2 pass; TSC criterion> | <why> | <risk if left> | <rotate or revoke, remove, purge history; owner> |
 | 2 | OPS-05 → <TSC> | Medium | partial | <observed> | <criterion> | <cause> | <effect> | <fix from the system's cloud-equivalents column> |
 
 Rows above are format examples; replace them. Order: Blockers, then non-backfillable Type 2 controls, then severity; cluster by control family. Every row cites a catalog control ID and the TSC from its catalog TSC line.
@@ -55,6 +56,8 @@ Rows above are format examples; replace them. Order: Blockers, then non-backfill
 | Processing Integrity (PI1) | | | | | | |
 | Confidentiality (C1) | | | | | | |
 | Privacy (P1-P8) | | | | | | |
+
+Each control is counted once, under its first in-scope criterion; add the footnote "in scope via secondary criterion" where the first-listed criterion is out of scope. The per-TSC rows must sum to the executive-summary total.
 
 ## 5. Exceptions likely (Type 2 gap only)
 
