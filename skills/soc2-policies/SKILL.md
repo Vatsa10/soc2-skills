@@ -7,7 +7,7 @@ description: Generate a tailored SOC 2 policy set (15 core policies) mapped to T
 
 This skill prepares for a SOC 2 audit; it is not an attestation. Only a licensed CPA firm can issue a SOC 2 Type 1 or Type 2 report.
 
-Generates the 15 core policy documents an auditor expects, filled in for the user's company and tailored to their scope and cloud. Each policy statement carries a control tag such as `[AC-03 → CC6.1]` (control ID from `../soc2/references/control-catalog.md`, then the Trust Services Criterion it supports).
+Generates the 15 core policy documents an auditor expects, filled in for the user's company and tailored to their scope and cloud. Each policy statement carries a control tag such as `[AC-02 → CC6.1]` (control ID from `../soc2/references/control-catalog.md`, then the Trust Services Criterion it supports).
 
 ## Inputs
 

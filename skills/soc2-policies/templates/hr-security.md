@@ -17,17 +17,17 @@ All {{company}} employees, contractors and interns, throughout the employment li
 
 ## Policy statements
 
-1. Background checks (identity, employment history, and criminal record where lawful) are completed and cleared before access to production or customer data is granted. [GOV-01 → CC1.1]
-2. All personnel sign a confidentiality agreement and acknowledge the security policies before receiving system access. [GOV-02 → CC1.3]
-3. Written job descriptions define security responsibilities for each role. [GOV-03 → CC1.4]
-4. New hires complete security awareness training within 14 days of start, and all personnel complete it annually, with completion tracked by {{owner}}. [GOV-04 → CC2.2]
-5. Engineers complete secure development training annually. [GOV-05 → CC2.3]
-6. Phishing simulations or equivalent exercises are conducted at least twice a year, and personnel who fail are retrained within 30 days. [GOV-04 → CC2.2]
-7. Accounts are provisioned only after onboarding steps are complete and removed within 24 hours of termination; HR notifies IT on the effective date. [AC-02 → CC6.2]
-8. Company devices, badges and tokens are collected at or before the last day of employment. [AC-02 → CC6.2]
-9. Performance reviews address accountability for security responsibilities, and violations follow documented disciplinary steps. [GOV-02 → CC1.3]
-10. A code of conduct is provided to all personnel, acknowledged annually, and includes how to report concerns anonymously. [GOV-01 → CC1.1]
-11. Performance expectations and competence requirements are reviewed when roles change. [GOV-03 → CC1.4]
+1. Background checks (identity, employment history, and criminal record where lawful) are completed and cleared before access to production or customer data is granted. [GOV-02 → CC1.4]
+2. All personnel sign a confidentiality agreement and acknowledge the security policies before receiving system access. [CF-05 → C1.1] [GOV-07 → CC2.2]
+3. Written job descriptions define security responsibilities for each role. [GOV-04 → CC1.3]
+4. New hires complete security awareness training within 14 days of start, and all personnel complete it annually, with completion tracked by {{owner}}. [GOV-05 → CC1.4]
+5. Engineers complete secure development training annually. [GOV-05 → CC1.4]
+6. Phishing simulations or equivalent exercises are conducted at least twice a year, and personnel who fail are retrained within 30 days. [GOV-05 → CC2.2]
+7. Accounts are provisioned only after onboarding steps are complete and removed within 24 hours of termination; HR notifies IT on the effective date. [AC-03 → CC6.2] [AC-04 → CC6.2]
+8. Company devices, badges and tokens are collected at or before the last day of employment. [AC-04 → CC6.2]
+9. Performance reviews address accountability for security responsibilities, and violations follow documented disciplinary steps. [GOV-06 → CC1.5]
+10. A code of conduct is provided to all personnel, acknowledged annually, and includes how to report concerns anonymously. [GOV-01 → CC1.1] [GOV-10 → CC2.2]
+11. Performance expectations and competence requirements are reviewed when roles change. [GOV-04 → CC1.3]
 
 ## Roles
 

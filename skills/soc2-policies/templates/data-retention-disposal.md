@@ -17,17 +17,17 @@ All customer, employee, business and system data held by {{company}} or its sub-
 
 ## Policy statements
 
-1. Retention periods are: customer data for the term of the contract plus 30 days after termination; application logs 12 months; security and audit logs 12 months (hot 90 days); backups 35 days; financial records 7 years; employee records 7 years after separation. [CF-01 → C1.1]
-2. Customer data is deleted from production systems within 30 days of contract termination or a verified deletion request, and from backups when they expire. [CF-02 → C1.1]
-3. Deletion is automated where possible (lifecycle rules, scheduled jobs), and {{owner}} checks at least annually that the jobs ran as designed. [CF-03 → C1.2]
-4. Cloud storage and databases are deleted using the provider's deletion service; for physical media, drives are wiped using NIST 800-88 methods or physically destroyed. [CF-04 → C1.2]
-5. Company laptops are wiped before reuse or disposal and a record of the asset ID, date and method is kept. [CF-04 → C1.2]
-6. Where a legal hold applies, deletion for the affected data is suspended until Legal releases the hold in writing. [CF-02 → C1.1]
-7. Customers can request deletion or export of their data, and requests are fulfilled and logged within 30 days. [PR-01 → P1.1]
-8. Personal data is retained only as long as needed for the purpose stated in the privacy notice. [PR-02 → P3.1]
-9. Sub-processors are contractually required to delete or return {{company}} data at the end of the engagement. [VND-01 → CC9.2]
-10. A certificate or log entry evidencing disposal is kept for each decommissioned device or data set containing Restricted data. [CF-03 → C1.2]
-11. Retention schedules are reviewed annually and whenever a new system or data type is added. [CF-01 → C1.1]
+1. Retention periods are: customer data for the term of the contract plus 30 days after termination; application logs 12 months; security and audit logs 12 months (hot 90 days); backups 35 days; financial records 7 years; employee records 7 years after separation. [CF-03 → C1.2]
+2. Customer data is deleted from production systems within 30 days of contract termination or a verified deletion request, and from backups when they expire. [CF-04 → C1.2]
+3. Deletion is automated where possible (lifecycle rules, scheduled jobs), and {{owner}} checks at least annually that the jobs ran as designed. [CF-04 → C1.2]
+4. Cloud storage and databases are deleted using the provider's deletion service; for physical media, drives are wiped using NIST 800-88 methods or physically destroyed. [AC-14 → C1.2]
+5. Company laptops are wiped before reuse or disposal and a record of the asset ID, date and method is kept. [AC-14 → CC6.5]
+6. Where a legal hold applies, deletion for the affected data is suspended until Legal releases the hold in writing. [CF-03 → C1.1]
+7. Customers can request deletion or export of their data, and requests are fulfilled and logged within 30 days. [CF-04 → P4.3] [PR-07 → P4.3]
+8. Personal data is retained only as long as needed for the purpose stated in the privacy notice. [PR-06 → P4.2]
+9. Sub-processors are contractually required to delete or return {{company}} data at the end of the engagement. [VND-05 → CC9.2]
+10. A certificate or log entry evidencing disposal is kept for each decommissioned device or data set containing Restricted data. [AC-14 → CC6.5]
+11. Retention schedules are reviewed annually and whenever a new system or data type is added. [CF-03 → C1.1]
 
 ## Roles
 

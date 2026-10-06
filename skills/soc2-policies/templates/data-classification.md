@@ -19,15 +19,15 @@ All data created, received, stored or transmitted by {{company}}, in any format 
 
 1. {{company}} uses four classification levels: Restricted (customer data, credentials, keys, personal data), Confidential (source code, financials, contracts), Internal (internal documents, non-public plans) and Public (marketing material, published documentation). [CF-01 → C1.1]
 2. Every data store and system in the inventory is assigned a classification by its data owner, and customer data is always at least Confidential. [CF-01 → C1.1]
-3. Restricted data must be encrypted in transit with TLS 1.2 or higher and at rest with AES-256 or provider-managed equivalent. [CF-02 → C1.1]
-4. Restricted data may not be stored on laptops, removable media, personal devices, personal cloud storage or in chat tools. [CF-02 → C1.1]
-5. Production customer data may not be copied to development or test environments unless it is anonymized or masked. [CF-03 → C1.2]
-6. Access to Restricted data requires explicit approval from the data owner and is reviewed quarterly. [AC-03 → CC6.1]
-7. Documents and repositories containing Restricted or Confidential data carry a visible label or are located in a labeled workspace. [CF-03 → C1.2]
-8. Sharing Restricted or Confidential data with third parties requires a signed NDA or contract with confidentiality terms. [CF-04 → C1.2]
-9. Data that falls in scope for privacy commitments (personal data) is tagged so notice, consent and deletion obligations can be located. [PR-01 → P1.1]
+3. Restricted data must be encrypted in transit with TLS 1.2 or higher and at rest with AES-256 or provider-managed equivalent. [AC-09 → C1.1] [AC-10 → CC6.7]
+4. Restricted data may not be stored on laptops, removable media, personal devices, personal cloud storage or in chat tools. [AC-15 → CC6.7]
+5. Production customer data may not be copied to development or test environments unless it is anonymized or masked. [CF-06 → C1.1]
+6. Access to Restricted data requires explicit approval from the data owner and is reviewed quarterly. [CF-02 → C1.1] [AC-05 → CC6.3]
+7. Documents and repositories containing Restricted or Confidential data carry a visible label or are located in a labeled workspace. [CF-01 → C1.1]
+8. Sharing Restricted or Confidential data with third parties requires a signed NDA or contract with confidentiality terms. [VND-04 → C1.1]
+9. Data that falls in scope for privacy commitments (personal data) is tagged so notice, consent and deletion obligations can be located. [PR-03 → P3.1]
 10. Classification is reviewed annually and when a new data type is introduced. [CF-01 → C1.1]
-11. Confidentiality commitments in customer contracts are tracked and compared against the classification scheme at least annually. [GOV-05 → CC2.3]
+11. Confidentiality commitments in customer contracts are tracked and compared against the classification scheme at least annually. [GOV-09 → CC2.3]
 
 ## Roles
 

@@ -17,17 +17,18 @@ All changes to application code, infrastructure-as-code, cloud configuration, da
 
 ## Policy statements
 
-1. All changes are made through version control and a pull request; direct commits to the production branch are blocked by branch protection. [CHG-01 → CC8.1]
-2. Every pull request requires at least one approving review from someone other than the author before merge. [CHG-02 → CC8.1]
-3. Automated tests and security checks (dependency scan, secret scan, static analysis) must pass in CI before a change can be merged or deployed. [CHG-03 → CC8.1]
-4. Each change has a ticket or pull request description stating purpose, risk, test evidence and rollback plan. [CHG-01 → CC8.1]
-5. Production deployments are performed by the CI/CD pipeline using a service identity; engineers do not deploy from laptops. [CHG-02 → CC8.1]
-6. Infrastructure changes are expressed as code, reviewed like application code, and applied by the pipeline. [CHG-03 → CC8.1]
-7. Emergency changes may be deployed after verbal approval from the engineering lead, and must receive retrospective review within 2 business days. [CHG-04 → CC8.1]
-8. Separate environments are used for development, staging and production, and production data is not used in non-production environments unless masked. [CHG-05 → CC8.1]
-9. Developers do not have standing write access to production; elevated access is time-bound and logged. [AC-02 → CC6.2]
-10. Each quarter {{owner}} samples at least 10 production changes (or all, if fewer) and verifies review, testing and approval evidence. [MON-01 → CC4.1]
-11. Software dependencies are inventoried, and critical vulnerabilities are patched within 7 days and high within 30 days. [OPS-01 → CC7.2]
+1. All changes are made through version control and a pull request; direct commits to the production branch are blocked by branch protection. [CHG-01 → CC8.1] [CHG-02 → CC8.1]
+2. Every pull request requires at least one approving review from someone other than the author before merge. [CHG-02 → CC8.1] [CTL-02 → CC5.1]
+3. Automated tests and security checks (dependency scan, secret scan, static analysis) must pass in CI before a change can be merged or deployed. [CHG-04 → CC8.1] [OPS-03 → CC7.1]
+4. Each change has a ticket or pull request description stating purpose, risk, test evidence and rollback plan. [CHG-05 → CC8.1]
+5. Production deployments are performed by the CI/CD pipeline using a service identity; engineers do not deploy from laptops. [CHG-06 → CC8.1]
+6. Infrastructure changes are expressed as code, reviewed like application code, and applied by the pipeline. [CTL-03 → CC5.2]
+7. Emergency changes may be deployed after verbal approval from the engineering lead, and must receive retrospective review within 2 business days. [CHG-07 → CC8.1]
+8. Separate environments are used for development, staging and production, and production data is not used in non-production environments unless masked. [CHG-06 → CC5.2] [CF-06 → C1.1]
+9. Developers do not have standing write access to production; elevated access is time-bound and logged. [AC-06 → CC6.3]
+10. Each quarter {{owner}} samples at least 10 production changes (or all, if fewer) and verifies review, testing and approval evidence. [MON-04 → CC4.1]
+11. Software dependencies are inventoried, and critical vulnerabilities are patched within 7 days and high within 30 days. [OPS-02 → CC7.1]
+12. Changes to code that accepts external input must include automated tests of input validation (type, range, required fields), and rejected inputs are logged. [PI-02 → PI1.2]
 
 ## Roles
 

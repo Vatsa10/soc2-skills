@@ -18,17 +18,20 @@ All personal information about customers, end users, employees and prospects tha
 ## Policy statements
 
 1. {{company}} publishes a privacy notice describing the personal information collected, purposes, retention, sharing, data subject rights and a contact address, and reviews it at least annually. [PR-01 → P1.1]
-2. Personal information is collected only for purposes stated in the privacy notice and limited to what is needed for those purposes. [PR-02 → P3.1]
-3. Where consent is required, it is obtained before collection, recorded with a timestamp, and can be withdrawn through the same channel. [PR-03 → P2.1]
-4. Individuals can request access to, correction of or deletion of their personal information; identity is verified and requests are completed within 30 days. [PR-04 → P5.1]
-5. Personal information is used only for the purposes stated and not for new purposes without updated notice and consent. [PR-02 → P3.1]
-6. Personal information is disclosed to third parties only for purposes in the notice, under a written agreement requiring equivalent protections. [PR-05 → P6.1]
-7. A record of disclosures of personal information to third parties is maintained and can be provided on request. [PR-05 → P6.1]
-8. Personal information is stored encrypted and accessible only to personnel who need it for their role. [AC-02 → CC6.2]
-9. Data quality: individuals can correct inaccurate information, and {{company}} corrects it in all systems within 30 days. [PR-04 → P5.1]
-10. Privacy complaints and inquiries are logged, answered within 30 days and reviewed by {{owner}} quarterly. [PR-01 → P1.1]
-11. Privacy incidents are handled under the Incident Response Policy and affected individuals are notified as required by law and contract. [OPS-01 → CC7.2]
-12. Privacy practices are assessed against this policy at least annually. [MON-01 → CC4.1]
+2. Personal information is collected only for purposes stated in the privacy notice and limited to what is needed for those purposes. [PR-03 → P3.1]
+3. Where consent is required, it is obtained before collection, recorded with a timestamp, and can be withdrawn through the same channel. [PR-02 → P2.1]
+4. Individuals can request access to, correction of or deletion of their personal information; identity is verified and requests are completed within 30 days. [PR-08 → P5.1] [PR-09 → P5.2]
+5. Personal information is used only for the purposes stated and not for new purposes without updated notice and consent. [PR-05 → P4.1]
+6. Personal information is disclosed to third parties only for purposes in the notice, under a written agreement requiring equivalent protections. [PR-10 → P6.1]
+7. A record of disclosures of personal information to third parties is maintained and can be provided on request. [PR-11 → P6.2]
+8. Personal information is stored encrypted and accessible only to personnel who need it for their role. [AC-06 → CC6.1] [AC-09 → CC6.1]
+9. Data quality: individuals can correct inaccurate information, and {{company}} corrects it in all systems within 30 days. [PR-14 → P7.1] [PR-09 → P5.2]
+10. Privacy complaints and inquiries are logged, answered within 30 days and reviewed by {{owner}} quarterly. [PR-15 → P8.1]
+11. Privacy incidents are handled under the Incident Response Policy and affected individuals are notified as required by law and contract. [PR-12 → P6.3]
+12. Privacy practices are assessed against this policy at least annually. [PR-15 → P8.1]
+13. Explicit consent is obtained before collecting sensitive personal information (health, financial account, government identifiers), and the consent is recorded. [PR-04 → P3.2]
+14. All personnel with access to personal information complete privacy training within 14 days of hire and annually. [PR-16 → P8.1]
+15. Vendors that process personal information are contractually required to notify {{company}} of a privacy incident within 72 hours. [PR-13 → P6.5]
 
 ## Roles
 
