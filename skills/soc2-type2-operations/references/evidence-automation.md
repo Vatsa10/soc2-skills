@@ -7,7 +7,7 @@ Ready-to-adapt snippets for `soc2-type2-operations`. Each is tagged with catalog
 Sections:
 - 0. Prerequisites checklist and evidence-writer role
 - 1. Scheduled evidence export: GitHub Actions (1) and GitLab CI (1b)
-- 2. Log retention, evidence store, backups: AWS Terraform (2), GCP (2b), Azure (2c)
+- 2. Log retention, evidence store, backups: AWS Terraform (2), GCP (2b), Azure (2c: activity log, resource diagnostic settings, evidence-writer identity, Azure export job)
 - 3. Quarterly access review
 - 4. Change management: PR template and CODEOWNERS
 - 5. Incident response runbook and annual tabletop
@@ -32,6 +32,7 @@ Tell the user these must exist before the export workflows can succeed. Mark eac
 - [ ] GitHub: secret `EVIDENCE_GH_TOKEN` (fine-grained PAT or GitHub App token) with read-only Administration, Dependabot alerts, Actions, and Pull requests permissions (Metadata read is implicit). The default `GITHUB_TOKEN` cannot read branch protection or rulesets (needs Administration read) but can read Dependabot alerts with `permissions: vulnerability-alerts: read`. Record the token's owner and rotation date (AC-17 → CC6.1).
 - [ ] GitLab: masked CI/CD variable `EVIDENCE_GL_TOKEN` (project or group access token, `read_api` scope, Reporter role or higher) and a pipeline schedule.
 - [ ] Label `soc2` exists (workflows below create it with `gh label create ... --force`).
+- [ ] Azure: user-assigned identity `soc2-evidence-writer` with a federated credential for the repo's default branch and Storage Blob Data Contributor on the locked evidence container only; repo variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` set (section 2c).
 - [ ] Role ARN / account ID / bucket name placeholders replaced.
 - [ ] Production data stores carry the backup tag (`backup = "true"`) used by the backup selection, or the selection is changed to match the user's tags.
 - [ ] Someone is named owner for each scheduled workflow, and failures notify them.
@@ -517,7 +518,74 @@ az policy state list --subscription "$SUB" --filter "complianceState eq 'NonComp
 az policy state summarize --subscription "$SUB" -o json > "policy-summary-$(date -u +%F).json"
 ```
 
-Note that `--period` is in days and the lock can only be extended afterwards, never shortened. Also use the Azure Backup vault job history for AV-03 → A1.2 (`az backup job list`), exported monthly. GitHub Actions reach Azure with OIDC federation (`azure/login@v3` with `client-id`, `tenant-id`, `subscription-id` and `permissions: id-token: write`); grant only Storage Blob Data Contributor scoped to the evidence container. If the login identity needs the same write-only property as the AWS role, avoid delete rights on the container.
+Note that `--period` is in days and the lock can only be extended afterwards, never shortened. Also use the Azure Backup vault job history for AV-03 → A1.2 (`az backup job list`), exported monthly; for Cosmos DB use continuous backup (point-in-time restore) and record the backup policy in the export.
+
+Resource diagnostic settings (OPS-05 → CC7.2, PI-05 → PI1.5). The activity log above covers the control plane of the subscription only; data-plane and service logs need a diagnostic setting on each resource. A Log Analytics workspace alone does not collect anything. Category names below are from the Azure Monitor supported-log-categories reference; run `az monitor diagnostic-settings categories list --resource <id>` to confirm them for the user's resources before writing.
+
+```bash
+RG=example-rg
+LAW_ID=$(az monitor log-analytics workspace show -g "$RG" -n soc2-law --query id -o tsv)
+COSMOS_ID=$(az cosmosdb show -g "$RG" -n example-cosmos --query id -o tsv)
+SB_ID=$(az servicebus namespace show -g "$RG" -n example-sb --query id -o tsv)
+APPSA_ID=$(az storage account show -g "$RG" -n exampleappdata --query id -o tsv)
+KV_ID=$(az keyvault show -g "$RG" -n example-kv --query id -o tsv)
+FUNC_ID=$(az functionapp show -g "$RG" -n example-func --query id -o tsv)
+
+# Cosmos DB: data-plane and control-plane requests (resource-specific tables CDB*)
+az monitor diagnostic-settings create --name soc2-cosmos --resource "$COSMOS_ID"   --workspace "$LAW_ID" --export-to-resource-specific true   --logs '[{"category":"DataPlaneRequests","enabled":true},{"category":"ControlPlaneRequests","enabled":true}]'
+
+# Service Bus: operational (management) and runtime audit (data access) logs
+az monitor diagnostic-settings create --name soc2-sb --resource "$SB_ID" --workspace "$LAW_ID"   --logs '[{"category":"OperationalLogs","enabled":true},{"category":"RuntimeAuditLogs","enabled":true}]'   --metrics '[{"category":"AllMetrics","enabled":true}]'
+
+# Blob storage: the setting goes on the blob service, not the account
+az monitor diagnostic-settings create --name soc2-blob --resource "$APPSA_ID/blobServices/default"   --workspace "$LAW_ID"   --logs '[{"category":"StorageRead","enabled":true},{"category":"StorageWrite","enabled":true},{"category":"StorageDelete","enabled":true}]'
+
+# Key Vault: every secret, key, and certificate access
+az monitor diagnostic-settings create --name soc2-kv --resource "$KV_ID" --workspace "$LAW_ID"   --logs '[{"category":"AuditEvent","enabled":true}]'
+
+# Azure Functions: host and function logs
+az monitor diagnostic-settings create --name soc2-func --resource "$FUNC_ID" --workspace "$LAW_ID"   --logs '[{"category":"FunctionAppLogs","enabled":true}]'
+```
+
+`RuntimeAuditLogs` on Service Bus requires the Premium tier; drop it on Standard. Bicep users can declare the same with `Microsoft.Insights/diagnosticSettings` resources whose `scope` is the target resource.
+
+Evidence-writer identity for GitHub Actions (OIDC to Azure, no client secret). A user-assigned managed identity with a federated credential bound to the default branch, granted only Storage Blob Data Contributor on the evidence container (the locked immutability policy is what prevents deletes and overwrites; the role alone would allow them):
+
+```bash
+RG=soc2-evidence-rg
+SA=examplesoc2evidence
+CONTAINER=github-evidence     # create it and lock it as in step 2 above
+REPO=example-org/app          # owner/repo
+
+az identity create -g "$RG" -n soc2-evidence-writer
+PRINCIPAL_ID=$(az identity show -g "$RG" -n soc2-evidence-writer --query principalId -o tsv)
+CLIENT_ID=$(az identity show -g "$RG" -n soc2-evidence-writer --query clientId -o tsv)
+
+# scheduled runs execute on the default branch; change main if needed
+az identity federated-credential create -g "$RG" --identity-name soc2-evidence-writer   --name soc2-github-main   --issuer https://token.actions.githubusercontent.com   --subject "repo:${REPO}:ref:refs/heads/main"   --audiences api://AzureADTokenExchange
+
+SA_ID=$(az storage account show -g "$RG" -n "$SA" --query id -o tsv)
+az role assignment create --assignee-object-id "$PRINCIPAL_ID" --assignee-principal-type ServicePrincipal   --role "Storage Blob Data Contributor"   --scope "$SA_ID/blobServices/default/containers/$CONTAINER"
+
+echo "AZURE_CLIENT_ID=$CLIENT_ID"   # store with AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID as repo variables
+```
+
+Export job variant for Azure: keep every step of section 1 up to "Stage as artifact", then replace the two AWS steps with the steps below. The workflow already has `permissions: id-token: write`. `azure/login@v3` is the current supported major version.
+
+```yaml
+      - name: Azure login (OIDC, no secret)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Copy to the immutable evidence container
+        run: |
+          az storage blob upload-batch             --account-name examplesoc2evidence             --destination github-evidence             --destination-path "github/${EXPORT_DATE}"             --source evidence             --auth-mode login             --overwrite false
+```
+
+`--auth-mode login` uses the federated identity's role assignment instead of an account key; keep shared-key access disabled on the evidence account. A re-run on the same date fails on the existing blobs, which is the intended immutability; use `workflow_dispatch` with a new date folder if a run must be repeated.
 
 ## 3. Quarterly access review (issue template and opener)
 
@@ -758,7 +826,7 @@ AppTraces
 | summarize rejected = count() by rule, source, bin(TimeGenerated, 1d)
 ```
 
-2. Reconciliation report (PI-03 → PI1.3). A scheduled job compares what entered a stage with what left it and records the difference. Minimum report schema, one row per run per stage:
+2. Reconciliation report (PI-03 → PI1.3). A scheduled job compares what entered a stage with what left it and records where every input record and every unit of amount went. Minimum report schema, one row per run per stage (amounts as decimal strings in one currency):
 
 ```json
 {
@@ -766,20 +834,24 @@ AppTraces
   "period_start": "2026-09-30T00:00:00Z",
   "period_end": "2026-09-30T23:59:59Z",
   "records_in": 10432,
-  "records_out": 10430,
+  "records_written": 10421,
+  "records_duplicate": 9,
   "records_rejected": 2,
   "amount_in": "1830211.45",
-  "amount_out": "1830011.45",
-  "unreconciled": 0,
+  "amount_written": "1829011.45",
+  "amount_duplicate": "900.00",
+  "amount_rejected": "300.00",
+  "unreconciled_records": 0,
+  "unreconciled_amount": "0.00",
   "status": "balanced",
   "reviewed_by": "Operations lead",
   "reviewed_at": "2026-10-01T09:12:00Z"
 }
 ```
 
-   A run where `records_in != records_out + records_rejected` or amounts differ must open a ticket (MON-03 → CC4.2). Keep both the automated report and the human review sign-off.
+   Balance rule, checked by the job: `records_in == records_written + records_duplicate + records_rejected` (10432 = 10421 + 9 + 2) and `amount_in == amount_written + amount_duplicate + amount_rejected` (1830211.45 = 1829011.45 + 900.00 + 300.00), computed with decimal arithmetic, never floats. `unreconciled_*` is the difference (`in` minus the sum); `status` is `balanced` only when both are zero. Any other run must open a ticket (MON-03 → CC4.2). `records_duplicate` must equal the count of `duplicate_ignored` events for the same window (item 3), and `records_rejected` the rejection-log count (item 1). Keep both the automated report and the human review sign-off.
 
-3. Duplicate and replay detection (PI-06 → PI1.3). Evidence: the idempotency-key store or unique constraint (schema or migration file) and a monthly count of suppressed duplicates. Example SQL, adapt names:
+3. Duplicate and replay detection (PI-06 → PI1.3). Evidence: the idempotency-key store or unique constraint (schema, migration file, or Cosmos DB container definition with a unique key policy, which can only be set when the container is created) and a monthly count of suppressed duplicates. The writer logs each suppressed duplicate as a structured `duplicate_ignored` event with the record key and correlation ID. Example SQL, adapt names:
 
 ```sql
 SELECT date_trunc('day', received_at) AS day, count(*) AS duplicates_suppressed
@@ -788,11 +860,27 @@ WHERE outcome = 'duplicate_ignored' AND received_at >= now() - interval '31 days
 GROUP BY 1 ORDER BY 1;
 ```
 
+   Azure (Application Insights in a Log Analytics workspace; the writer logs `duplicate_ignored` when a Cosmos DB create returns 409 Conflict). KQL, adapt table and property names:
+
+```kusto
+AppTraces
+| where TimeGenerated > ago(31d) and Message startswith "duplicate_ignored"
+| summarize duplicates_suppressed = count() by bin(TimeGenerated, 1d)
+| order by TimeGenerated asc
+```
+
+   If the outcome is also stored on a Cosmos DB audit container, the same count in Cosmos DB for NoSQL (`_ts` is epoch seconds; pass `@since` as a parameter):
+
+```sql
+SELECT VALUE COUNT(1) FROM c
+WHERE c.outcome = "duplicate_ignored" AND c._ts >= @since
+```
+
 4. Timeliness and completeness SLAs (PI-07 → PI1.4). Record for each run the start, end, SLA target, and met or missed. Alert on a missed SLA and keep the alert history; export the monthly percentage on time.
 
 5. Output checks (PI-04 → PI1.4). For each delivered output (report, invoice, export file, API response batch) keep: output ID, recipient, generation time, row count and checksum, and the check that compared the output with the source (count or control total). Keep the delivery access list so only authorised recipients receive it.
 
-6. Stored data integrity (PI-05 → PI1.5). Keep the backup and restore evidence from section 2 and any periodic checksum or row-count verification of critical tables.
+6. Stored data integrity (PI-05 → PI1.5). Keep the backup and restore evidence from section 2 and any periodic checksum or row-count verification of critical tables. On Azure Cosmos DB, the change feed can drive an independent integrity check: a change-feed processor (Azure Functions Cosmos DB trigger) copies each write's id, `_etag`, and a hash to an audit container or the locked store, and a monthly job compares counts and hashes with the source. The default latest-version change feed mode does not record deletes or intermediate updates; the all-versions-and-deletes mode does, and requires continuous backup on the account. Keep the processor's lease container and its failure alerts as evidence that the feed was read without gaps.
 
 Low-occurrence warning: if a Processing Integrity control fires only monthly, a short period yields very few occurrences and an exception leaves little room; say so in the output.
 
