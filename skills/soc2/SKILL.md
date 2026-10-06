@@ -16,7 +16,7 @@ Do all five steps on every user turn, not only the first.
 1. **Read state.** If `.soc2/state.json` exists in the user's repo, read it. Anything already answered there is never asked again.
 2. **Scan.** Run this shell command and read the JSON it prints:
    `python <this skill dir>/scripts/scan.py <repo> --if-stale`
-   `<this skill dir>` is the folder containing this SKILL.md. `<repo>` is the user's project root. The scanner caches to `.soc2/scan.json` and re-scans only when files are newer than the cache; pass `--write` to force a refresh when the user asks for a re-scan. Exit code 2 means a bad path: fix the path and retry.
+   Use `python3` if `python` is not found. `<this skill dir>` is the folder containing this SKILL.md. `<repo>` is the user's project root. The scanner caches to `.soc2/scan.json` and re-scans only when files are newer than the cache; pass `--write` to force a refresh when the user asks for a re-scan. Exit code 2 means a bad path: fix the path and retry.
 3. **Classify.** Pick the phase using `references/routing.md` (intent first, scan signals second).
 4. **Announce.** Print one line: `→ <skill> (<reason>)`, for example `→ soc2-architect (empty repo, design intent)`. The user can override it.
 5. **Hand off.** Read the target skill's file at `../<skill>/SKILL.md` and follow it for the rest of the turn.
@@ -25,26 +25,26 @@ Route targets: `soc2-architect`, `soc2-type1-readiness`, `soc2-type2-operations`
 
 ## First run
 
-If `.soc2/state.json` does not exist, create it (and the `.soc2/` folder) with this schema:
+If `.soc2/state.json` does not exist, or lacks any of the three keys below, ask first and write afterwards. Ask only for the missing keys, in one message:
+
+- `tsc_scope`: which Trust Services Criteria are in scope. Offer the default (all five: security, availability, processing_integrity, confidentiality, privacy) and let the user accept or narrow it.
+- `report_type`: `type1` or `type2`. No default; ask.
+- `audit_period`: start and end dates, asked only when `report_type` is `type2`. Not applicable for `type1`.
+
+Write `.soc2/state.json` (creating the `.soc2/` folder) only with the user's confirmed answers or their explicit acceptance of a default. Never pre-fill a key with an unconfirmed default. A key the user skipped stays absent, so it is asked again next time. Full schema, with all keys shown for reference:
 
 ```json
 {
   "tsc_scope": ["security","availability","processing_integrity","confidentiality","privacy"],
   "report_type": "type2",
-  "audit_period": {"start": "", "end": ""},
-  "system": {"name": "", "cloud": [], "data_classes": []},
-  "decisions": [],
-  "completed": []
+  "audit_period": {"start": "2027-01-01", "end": "2027-06-30"},
+  "system": {"name": "", "cloud": [], "data_classes": [], "company": "", "owner": ""},
+  "decisions": [{"control": "AC-02", "choice": "Okta MFA", "date": "2026-10-06"}],
+  "completed": ["soc2-architect"]
 }
 ```
 
-Ask the user only these three things, in one message:
-
-- `tsc_scope`: which Trust Services Criteria are in scope (default: all five).
-- `report_type`: `type1` or `type2`.
-- `audit_period`: start and end dates, asked only when `report_type` is `type2`. For `type1`, leave it empty.
-
-Never re-ask a key that is already present and filled in. The phase skills fill in `system`, `decisions`, and `completed` as they work.
+`system.company` and `system.owner` are optional; `soc2-policies` uses them. Write each later answer or decision back to state.json immediately when the user gives it, rather than at the end of the session. Never re-ask a key that is present in the file; absent keys are unanswered.
 
 ## Chaining
 
@@ -64,7 +64,7 @@ If the user names a skill (for example "use soc2-audit"), that wins over routing
 
 ## Always mention
 
-If the scan shows `secrets.hardcoded_hits > 0`, mention it briefly in whatever route you take, citing the relevant control ID from `references/control-catalog.md`.
+If the scan shows `secrets.hardcoded_hits > 0`, mention it briefly in whatever route you take, citing `AC-17 → CC6.1, CC6.7` (secrets management and no hardcoded credentials, per `references/control-catalog.md`). Never echo the secret value itself; give only file path and line.
 
 ## Shared files
 

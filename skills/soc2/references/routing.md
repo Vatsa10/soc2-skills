@@ -14,9 +14,13 @@ The router classifies each turn by user intent first, then by scan signals. Inte
 
 ## Intent keywords per route
 
-Match case-insensitively; any one hit is enough, and the most specific hit wins.
+Match case-insensitively; any one hit is enough. Keywords overlap (for example "audit" vs "audit period", "evidence" vs "evidence request list", "gap" vs "fix gaps"), so when several routes match, use this fixed precedence:
 
-- `soc2-architect`: design, architect, architecture, brainstorm, greenfield, from scratch, new system, new service, how should we build, diagram, ADR, component, data flow, "SOC 2 compliant by design".
+`soc2-audit` > `soc2-type2-operations` > `soc2-type1-readiness` > `soc2-policies` > `soc2-architect`
+
+Exception: if the user names a phase or skill explicitly, that wins. Multi-word phrases beat single words (the phrase "audit period" counts for type2, not audit).
+
+- `soc2-architect`: design, architect, architecture, brainstorm, greenfield, from scratch, new system, new service, how should we build, ADR, architecture diagram, data flow, "SOC 2 compliant by design".
 - `soc2-type1-readiness`: type 1, type I, point in time, readiness, "are the controls in place", control matrix, what is missing, implement controls, fix gaps.
 - `soc2-type2-operations`: type 2, type II, audit period, observation window, evidence, evidence automation, access review cadence, sampling, log retention, restore test, continuous compliance, collect evidence.
 - `soc2-audit`: audit, gap, gap analysis, are we compliant, auditor, findings, severity, PBC, evidence request list, mock audit, pre-audit.
@@ -67,4 +71,4 @@ Reason: code exists and in-scope controls are incomplete; the user asked what is
 Prompt: "Are we compliant? Pretend you're the auditor."
 Scan excerpt: `iac: ["terraform"]`, `change_mgmt: {"codeowners": true, "pr_template": true, "branch_protection": "unknown"}`, `secrets: {"hardcoded_hits": 2}`.
 Route: `→ soc2-audit (auditor intent: "are we compliant")`.
-Reason: intent keywords outweigh signals. Also mention in the reply that 2 hardcoded-secret hits were found, and that CHG-02 (peer review enforced by branch protection) cannot be confirmed from the repo alone because `branch_protection` is `unknown`.
+Reason: intent keywords outweigh signals. Also mention in the reply that 2 hardcoded-secret hits were found (AC-17 → CC6.1, CC6.7; cite file and line, never the secret value), and that CHG-02 (peer review enforced by branch protection) cannot be confirmed from the repo alone because `branch_protection` is `unknown`.
