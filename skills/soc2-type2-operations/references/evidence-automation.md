@@ -83,7 +83,7 @@ jobs:
           role-to-assume: arn:aws:iam::111122223333:role/soc2-evidence-writer
           aws-region: us-east-1
 
-      - name: Copy to the object-locked evidence bucket (400-day lock)
+      - name: Copy to the object-locked evidence bucket (lock = var.evidence_retention_days)
         run: |
           aws s3 cp evidence/ "s3://example-soc2-evidence/github/${EXPORT_DATE}/" --recursive
 ```
@@ -221,7 +221,7 @@ resource "aws_backup_selection" "tagged" {
 }
 ```
 
-Backup retention note: the 35-day backup lifecycle is an operational choice, separate from the 400-day evidence retention. The evidence for AV-03 → A1.2 is the job success history (export it with section 1's pattern, for example `aws backup list-backup-jobs`), which belongs in the locked bucket.
+Backup retention note: the 35-day backup lifecycle is an operational choice, separate from the evidence retention (`var.evidence_retention_days`: audit period in days plus 365). The evidence for AV-03 → A1.2 is the job success history (export it with section 1's pattern, for example `aws backup list-backup-jobs`), which belongs in the locked bucket.
 
 Restore-test reminder (AV-04 → A1.3): a backup that was never restored is not evidence of recoverability. Pick one:
 - AWS Backup restore testing (`aws_backup_restore_testing_plan` and `aws_backup_restore_testing_selection` in recent v5 provider releases), which restores on a schedule and records validation results (its role also needs the `AWSBackupServiceRolePolicyForRestores` managed policy); or

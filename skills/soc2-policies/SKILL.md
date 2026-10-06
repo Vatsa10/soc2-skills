@@ -12,13 +12,13 @@ Generates the 15 core policy documents an auditor expects, filled in for the use
 ## Inputs
 
 1. Read `.soc2/state.json` in the user's repo. Fields used: `tsc_scope`, `report_type`, `audit_period`, `system.name`, `system.cloud`, `system.data_classes`, `decisions`, `completed`, and optionally `system.company` and `system.owner`.
-2. If the file is missing, tell the user to run the `soc2` router skill first (scope and report type are needed), then stop.
+2. If the file is missing, do not stop: ask for `tsc_scope` (offer all five; Security is always in scope) and `report_type` (`type1` or `type2`) together with the questions below, then create `.soc2/state.json`.
 3. Ask only for what is missing, in one message:
    - `company`: legal or trading name (stored as `system.company`).
    - `owner`: name and role of the person accountable for the policies (stored as `system.owner`).
    - Scope: if `tsc_scope` is absent or empty, ask which of the five categories are in scope (security is always included).
    - Optional: `review_cadence` (default `annually`) and `effective_date` (default today's date).
-4. Write answers back into `.soc2/state.json` (preserve every other key).
+4. Write answers back into `.soc2/state.json` (preserve every other key). Write only confirmed answers, per the router's First-run rule (`../soc2/SKILL.md`): never pre-fill an unconfirmed default, and leave skipped keys absent.
 
 ## Procedure
 

@@ -67,14 +67,14 @@ Example row; replace. Include controls that have not fired inside the period (ca
 
 | Request | Control IDs | Owner | Due |
 |---|---|---|---|
-| IdP MFA policy export and enrollment report | AC-02 | <name/role> | <YYYY-MM-DD> |
-| User access review records, one per quarter in the period | AC-05 | <name/role> | <YYYY-MM-DD> |
-| Cloud audit trail configuration and retention setting | OPS-06, OPS-07 | <name/role> | <YYYY-MM-DD> |
-| Branch protection settings and sample of merged PRs with approvals | CHG-02, CHG-05 | <name/role> | <YYYY-MM-DD> |
-| Latest restore test record | AV-04 | <name/role> | <YYYY-MM-DD> |
-| Incident response plan and tabletop exercise record | OPS-10, OPS-11 | <name/role> | <YYYY-MM-DD> |
-| Security training completion report | GOV-05 | <name/role> | <YYYY-MM-DD> |
-| Vendor inventory with latest SOC reports and CUEC review | VND-03 | <name/role> | <YYYY-MM-DD> |
+| IdP MFA policy export and enrollment report | AC-02 → CC6.1, CC6.2 | <name/role> | <YYYY-MM-DD> |
+| User access review records, one per quarter in the period | AC-05 → CC6.2, CC6.3 | <name/role> | <YYYY-MM-DD> |
+| Cloud audit trail configuration and retention setting | OPS-06 → CC7.2; OPS-07 → CC7.2 | <name/role> | <YYYY-MM-DD> |
+| Branch protection settings and sample of merged PRs with approvals | CHG-02 → CC8.1, CC5.1; CHG-05 → CC8.1 | <name/role> | <YYYY-MM-DD> |
+| Latest restore test record | AV-04 → A1.3 | <name/role> | <YYYY-MM-DD> |
+| Incident response plan and tabletop exercise record | OPS-10 → CC7.4; OPS-11 → CC7.4, CC7.5 | <name/role> | <YYYY-MM-DD> |
+| Security training completion report | GOV-05 → CC1.4, CC2.2 | <name/role> | <YYYY-MM-DD> |
+| Vendor inventory with latest SOC reports and CUEC review | VND-03 → CC9.2 | <name/role> | <YYYY-MM-DD> |
 
 Example rows; build the real list from each evaluated control's `Evidence` field. Set due dates before fieldwork. For Type 2, request full population lists for the whole period, not only samples.
 

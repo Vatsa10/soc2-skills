@@ -36,7 +36,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 
 | Role | Responsibility |
 |---|---|
-| Executive sponsor (CEO) | Approves this policy and funds the security program. |
+| Executive sponsor (most senior executive) | Approves this policy and funds the security program. |
 | Policy owner ({{owner}}) | Maintains the policy set, runs the annual review and reports security status to leadership quarterly. |
 | All personnel | Complete training, follow policies and report suspected incidents. |
 

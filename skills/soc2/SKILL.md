@@ -44,7 +44,7 @@ Write `.soc2/state.json` (creating the `.soc2/` folder) only with the user's con
 }
 ```
 
-`system.company` and `system.owner` are optional; `soc2-policies` uses them. Write each later answer or decision back to state.json immediately when the user gives it, rather than at the end of the session. Never re-ask a key that is present in the file; absent keys are unanswered.
+`system.company` and `system.owner` are optional; `soc2-policies` uses them. `type1_report_date` (YYYY-MM-DD) is optional; `soc2-type1-readiness` sets it as the Type 1 as-of date. Separately, the scanner caches its output in `.soc2/scan.json`, so `.soc2/` can appear before state.json is written; that cache holds signals only, never answers. Write each later answer or decision back to state.json immediately when the user gives it, rather than at the end of the session. Never re-ask a key that is present in the file; absent keys are unanswered.
 
 ## Chaining
 

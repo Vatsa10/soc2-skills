@@ -12,7 +12,7 @@ Every entry has exactly these fields, in this order:
 
 | Field | Meaning |
 |---|---|
-| TSC | Criteria IDs the control addresses, then ` \| Category: <name>` |
+| TSC | Criteria IDs the control addresses, then ` \| Category: <name>` (one name per TSC series cited, for example `Security, Availability`) |
 | Applies when | The scope trigger; if it does not apply, record the control as N/A with a reason in the system description |
 | Implement | Concrete implementation, with example tooling |
 | Scan signals | Dotted keys from the repository scanner (`scripts/scan.py`) that hint at the control, or `none` when only people/process evidence can show it |
@@ -39,6 +39,20 @@ A scan signal is a hint, never proof: the scanner sees the repository, not the c
 | PI | Processing integrity | PI1 |
 | CF | Confidentiality | C1 |
 | PR | Privacy | P1–P8 |
+
+## Scope selection rule
+
+Every skill selects in-scope controls with this one rule. A control is in scope when **any** criterion on its `TSC:` line belongs to an in-scope category, judged by the criterion's series:
+
+| Series | Category | `tsc_scope` key |
+|---|---|---|
+| CC1–CC9 | Security | `security` (always in scope) |
+| A1.x | Availability | `availability` |
+| PI1.x | Processing Integrity | `processing_integrity` |
+| C1.x | Confidentiality | `confidentiality` |
+| P1–P8 | Privacy | `privacy` |
+
+Because Security is always in scope, every control citing a CC criterion is selected. The `Category:` label lists the same categories, one per series cited, so it always agrees with this rule. Then check `Applies when`; a control that does not apply is recorded as N/A with a reason.
 
 ## Type 1 vs Type 2
 
@@ -204,7 +218,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if every identified significant change in the period has a dated risk review
 
 ### RSK-05 — Business continuity plan with defined RTO/RPO
-- TSC: CC9.1, A1.2 | Category: Security
+- TSC: CC9.1, A1.2 | Category: Security, Availability
 - Applies when: always
 - Implement: BCP covering critical services, roles, communication tree, RTO/RPO targets, alternate work arrangements; reviewed annually; cyber insurance considered as risk transfer
 - Scan signals: backups.configured
@@ -315,9 +329,9 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Implement: IdP MFA policy (Okta/Entra/Google Workspace); cloud console via SSO only; no IAM users with console passwords
 - Scan signals: auth.sso, auth.mfa_hint
 - Type 1 test: MFA policy exists and is enforced (not optional) at the IdP on the report date
-- Type 2 test: MFA enforced across the period; inspect IdP policy change log and sample logins per frequency table
-- Evidence: IdP policy export, MFA enrollment report, quarterly access review records
-- Pass rule: PASS only if MFA is enforced for all users AND no bypass/break-glass account lacks compensating control
+- Type 2 test: MFA is an automated control: test the IdP enforcement policy once, then inspect the IdP configuration-change log (policy-state history) for the whole period to show enforcement was never disabled or weakened, and test change management over the IdP; no login sampling is needed
+- Evidence: IdP policy export, MFA enrollment report, IdP configuration-change log for the period
+- Pass rule: PASS only if MFA is enforced for all users AND no bypass/break-glass account lacks compensating control AND (Type 2) the configuration-change log shows enforcement stayed on for the whole period
 
 ### AC-03 — Access provisioning requires documented approval
 - TSC: CC6.2, CC6.3 | Category: Security
@@ -380,7 +394,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if configured settings meet the documented standard on every in-scope system
 
 ### AC-09 — Encryption at rest with managed keys
-- TSC: CC6.1, C1.1 | Category: Security
+- TSC: CC6.1, C1.1 | Category: Security, Confidentiality
 - Applies when: any datastore holding customer data (databases, object storage, volumes, backups)
 - Implement: AES-256 encryption at rest via cloud KMS (AWS KMS/GCP KMS/Azure Key Vault) for RDS, S3, EBS, and backups; default encryption enforced by IaC or organization policy
 - Scan signals: encryption.kms, encryption.at_rest_hint
@@ -430,7 +444,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if the provider's report covers the period with no relevant qualified opinion AND office controls exist where sensitive assets are stored
 
 ### AC-14 — Secure disposal of hardware and media
-- TSC: CC6.5, C1.2 | Category: Security
+- TSC: CC6.5, C1.2 | Category: Security, Confidentiality
 - Applies when: the entity retires laptops, drives, or other media that held company or customer data
 - Implement: encrypted endpoints wiped (crypto-erase) before reuse; certified disposal vendor issues certificates of destruction; cloud media disposal relies on provider's SOC 2
 - Scan signals: none
@@ -654,7 +668,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if sensitive paths are covered by CODEOWNERS AND sampled changes had owner approval
 
 ### CHG-04 — Automated tests and CI checks before merge
-- TSC: CC8.1, PI1.3 | Category: Security
+- TSC: CC8.1, PI1.3 | Category: Security, Processing Integrity
 - Applies when: any code deployed to production
 - Implement: CI (GitHub Actions/GitLab CI/CircleCI) runs unit/integration tests and security checks; status checks required to pass before merge
 - Scan signals: ci, change_mgmt.branch_protection
@@ -726,7 +740,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if every critical vendor was reviewed within 12 months AND each CUEC maps to an operating internal control
 
 ### VND-04 — Contracts with security and confidentiality terms
-- TSC: CC9.2, C1.1 | Category: Security
+- TSC: CC9.2, C1.1 | Category: Security, Confidentiality
 - Applies when: vendors process or access confidential data
 - Implement: contracts/DPAs include confidentiality, security requirements, breach notification, right to audit, subprocessor approval, and return/deletion at termination
 - Scan signals: none
@@ -768,7 +782,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if every tier needed to meet the SLA has no single-AZ dependency or a documented accepted risk
 
 ### AV-03 — Automated backups
-- TSC: A1.2, PI1.5 | Category: Availability
+- TSC: A1.2, PI1.5 | Category: Availability, Processing Integrity
 - Applies when: the system stores customer data
 - Implement: automated daily backups (point-in-time recovery where available), encrypted, retained per policy (e.g. 35 days), copied to a separate account or region
 - Scan signals: backups.configured, encryption.kms
@@ -817,7 +831,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Type 1 test: specifications exist for in-scope processing and are available to users
 - Type 2 test: specification updates in the period were communicated to customers
 - Evidence: specification documents, API docs, changelog entries
-- Pass rule: PASS only if each in-scope process has documented inputs, rules, and outputs
+- Pass rule: PASS only if each in-scope process has documented inputs, rules, and outputs AND (Type 2) every specification change in the period was communicated to customers
 
 ### PI-02 — Input validation
 - TSC: PI1.2 | Category: Processing Integrity
@@ -862,7 +876,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 ## Confidentiality (C1)
 
 ### CF-01 — Data classification policy and labeling
-- TSC: C1.1, CC2.1 | Category: Confidentiality
+- TSC: C1.1, CC2.1 | Category: Confidentiality, Security
 - Applies when: Confidentiality is in scope or the entity holds customer confidential data
 - Implement: classification levels (Public, Internal, Confidential, Restricted) with handling rules; data stores tagged with classification
 - Scan signals: policies, privacy.pii_fields
@@ -872,7 +886,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if every data store holding confidential data is classified with handling rules applied
 
 ### CF-02 — Restricted access to confidential data
-- TSC: C1.1, CC6.3 | Category: Confidentiality
+- TSC: C1.1, CC6.3 | Category: Confidentiality, Security
 - Applies when: Confidentiality is in scope
 - Implement: production customer data accessible only to named roles; access logged; support access through audited tooling with customer consent where promised
 - Scan signals: logging.centralized
@@ -892,7 +906,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if lifecycle rules match the schedule AND sampled data shows no retention beyond limits
 
 ### CF-04 — Secure deletion at contract end or on request
-- TSC: C1.2, P4.3 | Category: Confidentiality
+- TSC: C1.2, P4.3 | Category: Confidentiality, Privacy
 - Applies when: customers can terminate or request deletion
 - Implement: documented deletion procedure within contractual timeframe (e.g. 30 days) covering primary stores, replicas, and noting backup expiry; deletion confirmation sent to customer
 - Scan signals: privacy.dsar
@@ -902,7 +916,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Pass rule: PASS only if every sampled deletion completed within the committed timeframe with confirmation
 
 ### CF-05 — Confidentiality agreements for personnel
-- TSC: C1.1, CC1.1 | Category: Confidentiality
+- TSC: C1.1, CC1.1 | Category: Confidentiality, Security
 - Applies when: always
 - Implement: NDA or confidentiality clause in employment and contractor agreements signed before access
 - Scan signals: none
@@ -1061,7 +1075,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - Type 1 test: validation and update mechanisms exist
 - Type 2 test: sample data quality checks performed in the period
 - Evidence: validation rules, data quality reports
-- Pass rule: PASS only if accuracy controls exist at collection AND users can update their data
+- Pass rule: PASS only if accuracy controls exist at collection AND users can update their data AND (Type 2) the sampled data quality checks were performed in the period
 
 ### PR-15 — Privacy inquiries, complaints, and compliance monitoring
 - TSC: P8.1 | Category: Privacy

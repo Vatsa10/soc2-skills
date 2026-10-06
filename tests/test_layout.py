@@ -56,6 +56,22 @@ class LayoutTest(unittest.TestCase):
                         checked += 1
             self.assertGreater(checked, 0)
 
+    def test_doc_ids_exist_and_arrows_match(self):
+        ids = catalog_ids()
+        cat = (ROOT / "skills/soc2/references/control-catalog.md").read_text(encoding="utf-8")
+        tsc = dict(re.findall(r"^### ([A-Z]{2,3}-\d{2}) .*\n- TSC: (.*?) \|", cat, re.M))
+        shaped = re.compile(r"\b[A-Z]{2,3}-\d{2}\b")
+        arrow = re.compile(r"\b([A-Z]{2,3}-\d{2}) → ((?:(?:CC|A|PI|C|P)\d+\.\d+(?:, )?)+)")
+        for name in ("tests/router-evals.md", "README.md", "AGENTS.md", "CLAUDE.md"):
+            p = ROOT / name
+            if not p.exists():
+                continue
+            text = p.read_text(encoding="utf-8")
+            for cid in shaped.findall(text):
+                self.assertIn(cid, ids, f"{name}: {cid}")
+            for cid, cited in arrow.findall(text):
+                self.assertEqual(cited.rstrip(", "), tsc[cid], f"{name}: {cid}")
+
     def test_readme_disclaimer(self):
         self.assertIn(DISCLAIMER, (ROOT / "README.md").read_text(encoding="utf-8"))
 

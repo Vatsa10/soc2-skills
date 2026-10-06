@@ -47,7 +47,7 @@ The repo carries `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.js
 
 ## How routing works
 
-`soc2` is the entry point. Each turn it reads `.soc2/state.json` in your repo (never re-asking answered questions), scans the repo for control signals with `skills/soc2/scripts/scan.py`, and announces a one-line route to the next phase skill. Skills already in `state.completed` are skipped unless you ask to redo them; for `report_type: type1` the chain stops after readiness. State is written only with your confirmed answers. The schema also has optional `system.company` and `system.owner` keys, used by `soc2-policies` to fill policy headers.
+`soc2` is the entry point. Each turn it reads `.soc2/state.json` in your repo (never re-asking answered questions), scans the repo for control signals with `skills/soc2/scripts/scan.py`, and announces a one-line route to the next phase skill. Skills already in `state.completed` are skipped unless you ask to redo them; for `report_type: type1` the chain stops after readiness. State is written only with your confirmed answers. The scanner also caches its signals in `.soc2/scan.json`, so a `.soc2/` folder can appear in your repo on the first turn, before any state is written; add it to version control or `.gitignore` as you prefer. The schema also has optional `system.company` and `system.owner` keys, used by `soc2-policies` to fill policy headers.
 
 ## Tests
 

@@ -22,7 +22,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 1. A formal risk assessment is performed at least annually and after any significant change (new product, new cloud provider, acquisition, major incident). [RSK-01 → CC3.1]
 2. Risks are recorded in a risk register with description, asset, threat, likelihood (1-5), impact (1-5), score, owner, treatment and due date. [RSK-02 → CC3.2]
 3. Risk scoring is the product of likelihood and impact; scores of 15 or higher are High and must have a treatment plan approved within 30 days. [RSK-02 → CC3.2]
-4. Each risk is treated by one of four options: mitigate, transfer, avoid or accept; acceptance of a High risk requires written approval from the CEO. [RSK-02 → CC3.2]
+4. Each risk is treated by one of four options: mitigate, transfer, avoid or accept; acceptance of a High risk requires written approval from the most senior executive. [RSK-02 → CC3.2]
 5. The assessment explicitly considers fraud risk, including incentives, opportunity and rationalization, for finance, access and customer data. [RSK-03 → CC3.3]
 6. The assessment considers changes in the business, technology, regulation and leadership that could affect controls. [RSK-04 → CC3.4]
 7. Vendor and sub-processor risk is assessed as part of the annual assessment. [RSK-01 → CC3.2]

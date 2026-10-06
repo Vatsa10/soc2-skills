@@ -20,15 +20,15 @@ Match case-insensitively; any one hit is enough. Keywords overlap (for example "
 
 Exception: if the user names a phase or skill explicitly, that wins. Multi-word phrases beat single words (the phrase "audit period" counts for type2, not audit).
 
-- `soc2-architect`: design, architect, architecture, brainstorm, greenfield, from scratch, new system, new service, how should we build, ADR, architecture diagram, data flow, "SOC 2 compliant by design".
-- `soc2-type1-readiness`: type 1, type I, point in time, readiness, "are the controls in place", control matrix, what is missing, implement controls, fix gaps.
+- `soc2-architect`: design, architect, architecture, brainstorm, greenfield, from scratch, new system, new service, add a new, new component, add a service, how should we build, ADR, architecture diagram, data flow, "SOC 2 compliant by design".
+- `soc2-type1-readiness`: type 1, type I, point in time, readiness, "controls in place", check what we built, control matrix, what is missing, implement controls, fix gaps.
 - `soc2-type2-operations`: type 2, type II, audit period, observation window, evidence, evidence automation, access review cadence, sampling, log retention, restore test, continuous compliance, collect evidence.
 - `soc2-audit`: audit, gap, gap analysis, are we compliant, auditor, findings, severity, PBC, evidence request list, mock audit, pre-audit.
 - `soc2-policies`: policy, policies, write the policy, acceptable use, incident response policy, vendor policy, HR security policy, templates.
 
 ## Signal tie-breakers
 
-Use these only when intent is ambiguous or absent.
+Use these only when intent is ambiguous or absent. Evaluate them in order; the first one that matches wins.
 
 1. No `iac`, no code files, and `ci` empty: `soc2-architect`.
 2. `policies` signal empty and the user asks for anything compliance-related with no phase named: `soc2-policies`, then continue the chain.

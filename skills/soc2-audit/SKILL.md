@@ -27,9 +27,9 @@ Paths are relative to this skill folder; the shared files live in the sibling `s
 
 ## Procedure
 
-1. Load state. Confirm `tsc_scope`, `report_type`, and (Type 2) `audit_period`. If absent, ask briefly and write them to state.
+1. Load state. Confirm `tsc_scope`, `report_type`, and (Type 2) `audit_period`. If absent, ask briefly and write them to state. Write only confirmed answers, per the router's First-run rule (`../soc2/SKILL.md`): never pre-fill an unconfirmed default, and leave skipped keys absent.
 2. Scan: run `python ../soc2/scripts/scan.py <repo_path> --if-stale` (path relative to this skill folder). It always prints JSON, reuses the `.soc2/scan.json` cache unless tracked files changed, and rewrites it when they did. Scan output is signals only, never a verdict.
-3. Select every catalog control whose TSC criteria fall in scope and whose `Applies when` is true. Mark the rest N/A with a one-line reason.
+3. Select every catalog control in scope under the catalog's Scope selection rule (`../soc2/references/control-catalog.md`): a control is in scope when any criterion on its `TSC:` line belongs to an in-scope category by series (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy), and whose `Applies when` is true. Mark the rest N/A with a one-line reason.
 4. For each selected control, in catalog order:
    - Gather evidence: the scan signals listed on the control, then read the code, IaC, CI config, and documents that confirm or contradict them.
    - Apply the control's `Pass rule` exactly. For Type 1, use the Type 1 test column at single-instance, as-of-date scope and ignore the Pass rule's sampling language. For Type 2, use the Type 2 test column with period-wide evidence and sampling. Do not invent criteria.

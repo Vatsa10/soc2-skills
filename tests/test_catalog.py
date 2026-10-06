@@ -46,6 +46,20 @@ class CatalogTest(unittest.TestCase):
             for t in ids:
                 self.assertIn(t, valid, f"{cid} cites unknown {t}")
 
+    def test_category_matches_tsc_series(self):
+        # The Scope selection rule: one Category name per TSC series cited.
+        def series(c):
+            for pre, name in (("CC", "Security"), ("A1", "Availability"),
+                              ("PI", "Processing Integrity"), ("C1", "Confidentiality")):
+                if c.startswith(pre):
+                    return name
+            return "Privacy"
+        for cid, c in controls().items():
+            tsc, cat = c["fields"]["TSC"].split("| Category:")
+            want = {series(x.strip()) for x in tsc.split(",")}
+            got = {x.strip() for x in cat.split(",")}
+            self.assertEqual(got, want, cid)
+
     def test_every_criterion_covered(self):
         cited = set()
         for c in controls().values():

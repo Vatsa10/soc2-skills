@@ -58,7 +58,7 @@ SOC2-Skills/
 │   ├── test_scan.py
 │   ├── test_catalog.py
 │   └── router-evals.md           # manual routing eval cases
-├── scripts/install.py            # installs whole pack to ~/.claude/skills or ~/.codex/skills
+├── scripts/install.py            # installs whole pack to ~/.claude/skills or ~/.agents/skills
 ├── THIRD_PARTY_NOTICES.md
 ├── README.md
 └── LICENSE                       # MIT
@@ -66,7 +66,7 @@ SOC2-Skills/
 
 Decisions:
 - One `skills/` tree serves both tools; no per-tool duplicated copies.
-- Shared files live inside the router skill (`skills/soc2/references/`, `skills/soc2/scripts/`). Sub-skills reference them as `../soc2/...`. This holds both in the repo and when installed, because skills install as sibling folders (`~/.claude/skills/<name>`, `~/.codex/skills/<name>`, or the plugin's `skills/`). `install.py` copies all six skill folders together.
+- Shared files live inside the router skill (`skills/soc2/references/`, `skills/soc2/scripts/`). Sub-skills reference them as `../soc2/...`. This holds both in the repo and when installed, because skills install as sibling folders (`~/.claude/skills/<name>`, `~/.agents/skills/<name>`, or the plugin's `skills/`). `install.py` copies all six skill folders together.
 - Language: Markdown for skills; Python 3 stdlib only for scripts (no third-party dependencies).
 
 ## 4. Router (`skills/soc2`)
