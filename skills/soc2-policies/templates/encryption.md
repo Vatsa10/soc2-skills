@@ -17,6 +17,8 @@ All {{company}} systems, networks, endpoints, backups and third-party services t
 
 ## Policy statements
 
+_Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
+
 1. All data in transit over public or untrusted networks uses TLS 1.2 or higher; SSL, TLS 1.0 and TLS 1.1 are disabled. [AC-10 → CC6.7]
 2. Data at rest in databases, object storage, volumes and backups is encrypted with AES-256 or the cloud provider's equivalent managed encryption. [AC-09 → CC6.1]
 3. Laptops and mobile devices use full-disk encryption (FileVault, BitLocker or equivalent), verified by device management. [AC-15 → CC6.7]
@@ -39,11 +41,11 @@ All {{company}} systems, networks, endpoints, backups and third-party services t
 
 ## Exceptions
 
-Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the CEO for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register.
+Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the most senior executive for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register, a dated list kept by {{owner}} with requester, reason, compensating controls, approver and expiry.
 
 ## Enforcement
 
-Violations are investigated by {{owner}} and People Operations. Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
+Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
 ## Review
 

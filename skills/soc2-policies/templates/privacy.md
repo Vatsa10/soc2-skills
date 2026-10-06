@@ -17,6 +17,8 @@ All personal information about customers, end users, employees and prospects tha
 
 ## Policy statements
 
+_Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
+
 1. {{company}} publishes a privacy notice describing the personal information collected, purposes, retention, sharing, data subject rights and a contact address, and reviews it at least annually. [PR-01 → P1.1]
 2. Personal information is collected only for purposes stated in the privacy notice and limited to what is needed for those purposes. [PR-03 → P3.1]
 3. Where consent is required, it is obtained before collection, recorded with a timestamp, and can be withdrawn through the same channel. [PR-02 → P2.1]
@@ -30,8 +32,9 @@ All personal information about customers, end users, employees and prospects tha
 11. Privacy incidents are handled under the Incident Response Policy and affected individuals are notified as required by law and contract. [PR-12 → P6.3]
 12. Privacy practices are assessed against this policy at least annually. [PR-15 → P8.1]
 13. Explicit consent is obtained before collecting sensitive personal information (health, financial account, government identifiers), and the consent is recorded. [PR-04 → P3.2]
-14. All personnel with access to personal information complete privacy training within 14 days of hire and annually. [PR-16 → P8.1]
+14. All personnel with access to personal information complete privacy training within 30 days of hire and annually. [PR-16 → P8.1]
 15. Vendors that process personal information are contractually required to notify {{company}} of a privacy incident within 72 hours. [PR-13 → P6.5]
+16. Personal information is securely deleted when its retention period ends or a verified deletion request is completed, including from backups when they expire, and deletion is logged. [PR-07 → P4.3]
 
 ## Roles
 
@@ -43,11 +46,11 @@ All personal information about customers, end users, employees and prospects tha
 
 ## Exceptions
 
-Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the CEO for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register.
+Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the most senior executive for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register, a dated list kept by {{owner}} with requester, reason, compensating controls, approver and expiry.
 
 ## Enforcement
 
-Violations are investigated by {{owner}} and People Operations. Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
+Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
 ## Review
 

@@ -17,6 +17,8 @@ All changes to application code, infrastructure-as-code, cloud configuration, da
 
 ## Policy statements
 
+_Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
+
 1. All changes are made through version control and a pull request; direct commits to the production branch are blocked by branch protection. [CHG-01 → CC8.1] [CHG-02 → CC8.1]
 2. Every pull request requires at least one approving review from someone other than the author before merge. [CHG-02 → CC8.1] [CTL-02 → CC5.1]
 3. Automated tests and security checks (dependency scan, secret scan, static analysis) must pass in CI before a change can be merged or deployed. [CHG-04 → CC8.1] [OPS-03 → CC7.1]
@@ -27,8 +29,8 @@ All changes to application code, infrastructure-as-code, cloud configuration, da
 8. Separate environments are used for development, staging and production, and production data is not used in non-production environments unless masked. [CHG-06 → CC5.2] [CF-06 → C1.1]
 9. Developers do not have standing write access to production; elevated access is time-bound and logged. [AC-06 → CC6.3]
 10. Each quarter {{owner}} samples at least 10 production changes (or all, if fewer) and verifies review, testing and approval evidence. [MON-04 → CC4.1]
-11. Software dependencies are inventoried, and critical vulnerabilities are patched within 7 days and high within 30 days. [OPS-02 → CC7.1]
-12. Changes to code that accepts external input must include automated tests of input validation (type, range, required fields), and rejected inputs are logged. [PI-02 → PI1.2]
+11. Software dependencies are inventoried, and critical vulnerabilities are patched within 15 days and high within 30 days, and medium within 90 days. [OPS-02 → CC7.1]
+12. (if processing_integrity in scope) Changes to code that accepts external input must include automated tests of input validation (type, range, required fields), and rejected inputs are logged. [PI-02 → PI1.2]
 
 ## Roles
 
@@ -41,11 +43,11 @@ All changes to application code, infrastructure-as-code, cloud configuration, da
 
 ## Exceptions
 
-Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the CEO for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register.
+Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the most senior executive for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register, a dated list kept by {{owner}} with requester, reason, compensating controls, approver and expiry.
 
 ## Enforcement
 
-Violations are investigated by {{owner}} and People Operations. Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
+Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
 ## Review
 

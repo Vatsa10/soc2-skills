@@ -25,12 +25,14 @@ Generates the 15 core policy documents an auditor expects, filled in for the use
 1. Select policies from `templates/` by `tsc_scope`. All 15 are generated, except:
    - `privacy` only when `privacy` is in `tsc_scope`.
    - `business-continuity-dr` is always generated (it also evidences availability when `availability` is in scope).
+   - Category-specific statements start with `(if privacy in scope)`, `(if processing_integrity in scope)` or `(if availability in scope)`. Keep such a statement (and drop the prefix) only when that category is in `tsc_scope`; otherwise remove the statement entirely. Unprefixed statements are always kept.
    - Skip a policy whose file already exists in `docs/policies/` and switch to Review mode for it.
 2. Read the one template for each selected policy and replace `{{company}}`, `{{owner}}`, `{{effective_date}}`, `{{review_cadence}}`. Leave no `{{...}}` in the output.
-3. Tailor, without removing any tagged statement:
+3. Tailor, without removing any unconditional tagged statement:
    - Name the real services where the template says "cloud provider" or gives examples: use `system.cloud` (for example AWS KMS and CloudTrail, GCP Cloud KMS and Audit Logs, Azure Key Vault and Activity Log).
    - Apply earlier `decisions` (for example a chosen IdP, ticketing tool or log platform) by naming the tool in the relevant statements.
-   - Align retention periods and RTO/RPO with decisions; where the user states a different number, change the number but keep the statement and its tag.
+   - Every number, cadence and timeframe in a statement is a default the company must actually be able to meet, because an auditor tests against the policy as written. Defaults follow the control catalog's Implement values (for example critical vulnerabilities 15 days, passwords 12 characters, access reviews quarterly, scans monthly). Ask the user to confirm them; where the company runs a different number, change the number but keep the statement and its tag. Never set a number the company does not run.
+   - Align retention periods and RTO/RPO with decisions.
    - Where `system.data_classes` includes personal or health data, keep the Privacy, Retention and Classification statements as written and name those data classes.
    - Statements must stay concrete (who, what, how often); never replace them with generic wording.
 4. Do not claim controls the company does not run. If a statement describes something the user says they do not do, keep it, and list it in the output as a gap to close before the audit period starts.
@@ -44,7 +46,7 @@ Use when `docs/policies/` (or any `policies/` directory) already holds policies,
 1. Match each existing file to a template by slug stem (`access-control`, `incident-response`, and so on). Note unmatched policies and any of the 15 that are missing.
 2. For each matched policy, compare its content against the template's numbered statements. A statement counts as covered only if the policy states the same requirement concretely (the numbers can differ). Vague wording ("appropriate measures", "regularly") is reported as not covered.
 3. Report missing statements with their control tags, grouped by policy.
-4. Check the policy header for owner, effective date and review cadence, and flag a review date older than the stated cadence.
+4. Check the policy header for owner, effective date and review cadence, and flag an effective date older than the stated cadence.
 5. Offer to append the missing statements; edit existing files only after the user agrees.
 
 ## Output contract
@@ -53,5 +55,6 @@ Finish with:
 
 1. The list of files written or reviewed, as paths under `docs/policies/`.
 2. A table `policy | control IDs covered | TSC criteria`, built from the tags in the written files.
-3. Open gaps: statements the user said they cannot meet, placeholders still to confirm, and policies skipped because privacy is out of scope.
-4. A reminder that policies need leadership approval and employee acknowledgement to count as evidence, and that the disclaimer above applies.
+3. Commitments to confirm: a table `policy | statement # | commitment (number or cadence) | catalog default`, covering every numeric value or cadence left in the written policies, so the user can confirm each is something the company runs. Include conditional statements that were kept or dropped by scope.
+4. Open gaps: statements the user said they cannot meet, placeholders still to confirm, and policies skipped because privacy is out of scope.
+5. A reminder that policies need leadership approval and employee acknowledgement to count as evidence, and that the disclaimer above applies.

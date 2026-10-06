@@ -17,6 +17,8 @@ All company-owned or managed laptops, mobile devices, servers, cloud resources, 
 
 ## Policy statements
 
+_Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
+
 1. {{company}} maintains an inventory of hardware, SaaS applications, cloud accounts and production data stores, with owner, location, classification and status for each. [GOV-08 → CC2.1]
 2. Every asset in the inventory has a named owner who confirms the entry at least semi-annually. [GOV-08 → CC2.1]
 3. Laptops are procured by IT, enrolled in device management, and recorded in the inventory before being issued. [AC-15 → CC6.7]
@@ -39,11 +41,11 @@ All company-owned or managed laptops, mobile devices, servers, cloud resources, 
 
 ## Exceptions
 
-Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the CEO for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register.
+Exceptions to this policy must be requested in writing, state the business reason and compensating controls, and be approved by {{owner}} (and by the most senior executive for exceptions affecting Restricted data). Each exception expires after at most 12 months and is recorded in the exceptions register, a dated list kept by {{owner}} with requester, reason, compensating controls, approver and expiry.
 
 ## Enforcement
 
-Violations are investigated by {{owner}} and People Operations. Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
+Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
 ## Review
 
