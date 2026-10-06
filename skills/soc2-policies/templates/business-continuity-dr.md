@@ -4,8 +4,12 @@
 |---|---|
 | Company | {{company}} |
 | Policy owner | {{owner}} |
+| Approver | {{approver}} |
+| Approval date | {{approval_date}} |
+| Version | {{version}} |
 | Effective date | {{effective_date}} |
 | Review cadence | {{review_cadence}} |
+| Next review due | {{next_review}} |
 
 ## Purpose
 
@@ -21,7 +25,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 
 1. {{company}} documents a recovery time objective (RTO) and recovery point objective (RPO) for each production service; defaults are RTO 8 hours and RPO 24 hours unless a customer contract specifies otherwise. [RSK-05 → A1.2] [RSK-05 → CC9.1]
 2. Production databases and object storage are backed up automatically at least daily, with point-in-time recovery enabled where the platform supports it. [AV-03 → A1.2]
-3. Backups are encrypted, stored in a different region or account than the primary data, and retained for at least 35 days. [AV-03 → A1.2] [AC-09 → C1.1]
+3. Backups ({{cloud_backup}}) are encrypted, stored in a different region or account than the primary data, and retained for at least 35 days. [AV-03 → A1.2] [AC-09 → C1.1]
 4. Restoration from backup is tested at least annually, and the test records date, data set, time taken and any failure. [AV-04 → A1.3]
 5. (if availability in scope) Production is deployed across at least two availability zones where the cloud provider offers them. [AV-02 → A1.2]
 6. (if availability in scope) Capacity and availability are monitored, with alerts when CPU, memory, storage or error rate exceeds documented thresholds. [AV-01 → A1.1]
@@ -48,6 +52,10 @@ Exceptions to this policy must be requested in writing, state the business reaso
 
 Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
-## Review
+## Review and approval
 
-This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. The effective date and approver are recorded in version control history. Next review is due before the end of the cadence period following {{effective_date}}.
+This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. Approval (approver name and date) is recorded in the header and in the revision history below; version-control history alone is not evidence of approval. After a material change, all personnel re-acknowledge the policy set within 30 days (Information Security Policy, statement 5). Next review is due by the date in the header.
+
+| Version | Date | Change | Approved by |
+|---|---|---|---|
+| {{version}} | {{effective_date}} | Initial issue | {{approver}} |

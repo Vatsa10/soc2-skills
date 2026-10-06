@@ -4,8 +4,12 @@
 |---|---|
 | Company | {{company}} |
 | Policy owner | {{owner}} |
+| Approver | {{approver}} |
+| Approval date | {{approval_date}} |
+| Version | {{version}} |
 | Effective date | {{effective_date}} |
 | Review cadence | {{review_cadence}} |
+| Next review due | {{next_review}} |
 
 ## Purpose
 
@@ -52,6 +56,10 @@ Exceptions to this policy must be requested in writing, state the business reaso
 
 Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
-## Review
+## Review and approval
 
-This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. The effective date and approver are recorded in version control history. Next review is due before the end of the cadence period following {{effective_date}}.
+This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. Approval (approver name and date) is recorded in the header and in the revision history below; version-control history alone is not evidence of approval. After a material change, all personnel re-acknowledge the policy set within 30 days (Information Security Policy, statement 5). Next review is due by the date in the header.
+
+| Version | Date | Change | Approved by |
+|---|---|---|---|
+| {{version}} | {{effective_date}} | Initial issue | {{approver}} |
