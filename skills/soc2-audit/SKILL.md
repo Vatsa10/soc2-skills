@@ -1,58 +1,82 @@
 ---
 name: soc2-audit
-description: Run an auditor-style SOC 2 gap assessment (Type 1 or Type 2) of a repo/system against all in-scope Trust Services Criteria, producing findings, a PBC evidence request list, and a remediation plan. Use when the user asks for an audit, gap analysis, compliance check, or 'are we SOC 2 compliant'.
+description: "Run an auditor-style SOC 2 gap assessment (Type 1 or Type 2) of a repo/system against the in-scope Trust Services Criteria, producing ranked findings, a PBC evidence request list, a remediation plan, and draft system description and management assertion. Use when the user asks for an audit, gap analysis, compliance check, 'are we SOC 2 compliant', 'Type 2 readiness', 'what will the auditor ask us for' (PBC list), or a remediation plan or roadmap (for example a 2-week or 30/60/90 plan)."
 ---
 
 # SOC 2 Audit (gap assessment)
 
 This skill prepares for a SOC 2 audit; it is not an attestation. Only a licensed CPA firm can issue a SOC 2 Type 1 or Type 2 report.
 
-Never state or imply that the system "is SOC 2 compliant" or "passed". Report readiness against the catalog only.
+Never state or imply that the system "is SOC 2 compliant" or "passed". Report readiness against the catalog only. The severity rubric below is for readiness; auditors report deviations and may qualify their opinion, they do not use these tiers.
 
 ## Inputs
 
-Paths are relative to this skill folder; the shared files live in the sibling `soc2` skill.
+Resolve `../soc2` against the directory containing this SKILL.md (not the shell's cwd). Call that absolute path `<soc2>`.
 
-- Catalog: `../soc2/references/control-catalog.md` (every control, Pass rule, Type 1 test, Type 2 test, Evidence, sampling guide)
-- Criteria: `../soc2/references/tsc-criteria.md`
-- Scanner: `../soc2/scripts/scan.py`
-- State: `.soc2/state.json` in the user's repo (`tsc_scope`, `report_type`, `audit_period`, `system`, `decisions`, `completed`). Read it first; do not re-ask anything already answered. Ask only for missing scope items.
+- Control index: `<soc2>/references/control-index.md`. Read it FIRST. Open full catalog entries in `<soc2>/references/control-catalog.md` only for controls you evaluate (search for `### <ID>`); never read the whole catalog at once.
+- Criteria: `<soc2>/references/tsc-criteria.md`. Cloud equivalents: `<soc2>/references/cloud-equivalents.md`.
+- Scanner: `<soc2>/scripts/scan.py`.
+- State: `.soc2/state.json` in the user's repo (`tsc_scope`, `report_type`, `audit_period`, `type1_report_date`, `system{... cloud[] ... workforce}`, `decisions`, `completed`). Never re-ask a key present in state. Ask only missing keys, in the router's plain wording (`<soc2>/SKILL.md`), and write only confirmed answers.
 - Existing `docs/soc2/*` and `docs/policies/*` in the user's repo.
+- Mode details: `references/audit-modes.md`. Templates: `references/report-template.md`, `references/system-description-template.md`, `references/management-assertion-template.md`.
 
-## Severity rubric
+## Modes
 
-- High: no control exists for a criterion in scope; hardcoded secrets; no logging (no security event logging or audit trail).
-- Medium: control partly designed or implemented; evidence is manual-only or not repeatable.
-- Low: control works but documentation is missing, stale, or unapproved.
+Pick one from the request and state, and say which you chose. Full instructions are in `references/audit-modes.md`.
 
-## Procedure
+- Full gap (default): every in-scope control, report per the template.
+- Type 2 gap: full gap plus evidence continuity and sampling simulation ("Type 2 readiness", gap view).
+- Pre-period readiness: forced when `report_type=type2` and `audit_period.start` is after today. Report evidence-live-by dates per control; no sampling simulation.
+- PBC-only: "what will the auditor ask for". Build the PBC list from existing `docs/soc2/*` and the index; no full re-evaluation.
+- Remediation plan: "plan", "roadmap", "2 week plan". Timeboxed plan (2-week, or 30/60/90) from the latest findings, re-running the gap assessment only if none exist.
 
-1. Load state. Confirm `tsc_scope`, `report_type`, and (Type 2) `audit_period`. If absent, ask briefly and write them to state. Write only confirmed answers, per the router's First-run rule (`../soc2/SKILL.md`): never pre-fill an unconfirmed default, and leave skipped keys absent.
-2. Scan: run `python ../soc2/scripts/scan.py <repo_path> --if-stale` (path relative to this skill folder). It always prints JSON, reuses the `.soc2/scan.json` cache unless tracked files changed, and rewrites it when they did. Scan output is signals only, never a verdict.
-3. Select every catalog control in scope under the catalog's Scope selection rule (`../soc2/references/control-catalog.md`): a control is in scope when any criterion on its `TSC:` line belongs to an in-scope category by series (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy), and whose `Applies when` is true. Mark the rest N/A with a one-line reason.
-4. For each selected control, in catalog order:
-   - Gather evidence: the scan signals listed on the control, then read the code, IaC, CI config, and documents that confirm or contradict them.
-   - Apply the control's `Pass rule` exactly. For Type 1, use the Type 1 test column at single-instance, as-of-date scope and ignore the Pass rule's sampling language. For Type 2, use the Type 2 test column with period-wide evidence and sampling. Do not invent criteria.
-   - Rate PASS, PARTIAL, FAIL, or N/A. A signal alone is at most "likely implemented": mark PARTIAL and request evidence in the PBC list unless the code or a document proves it.
-   - Every non-PASS control becomes a finding with severity from the rubric. Cite `control ID → TSC criterion` (for example `AC-17 → CC6.1`, taking the criterion from that control's `TSC` field).
-5. Type 2 additions, per control:
-   - Evidence continuity: confirm evidence would exist for the whole period, not just now. Check for a control that has not yet fired in the period, a missed cycle (quarterly, monthly), a gap in continuous logging, or a mid-period change.
-   - Sampling simulation: take the control's frequency, use the catalog sampling table to pick a sample size, choose samples spread across the period (first month included, not only the latest), and test each against the Pass rule. Any sample that would fail goes in "Exceptions likely".
-6. Build the PBC list from each evaluated control's `Evidence` field: request, control IDs, owner, due date. Merge duplicates so one artifact serves several controls.
-7. Build the 30/60/90 day roadmap: High first, then Medium, then Low.
-8. Fill `references/report-template.md` and write the result to `docs/soc2/audit-report.md` in the user's repo (create the folder if needed). Keep the disclaimer at the top and bottom. Omit the Exceptions-likely section for Type 1.
-9. Update `.soc2/state.json`: add `soc2-audit` to `completed` and record any scope decisions made. Do not remove existing entries.
-10. Tell the user the headline counts, the top three findings, and where the report is.
+Period check (Type 2): if the window has already started or ended and most evaluated controls are `missing`, warn plainly that evidence cannot be backfilled for the elapsed part, and offer a later window or a Type 1.
+
+## Status and severity
+
+Status per control: `designed` | `partial` | `missing` | `needs-evidence` | `n/a` (reason required). A scan signal alone is at most `needs-evidence` unless code or a document proves it.
+
+Severity per finding:
+- Blocker: live exposure now: secrets in the repo, publicly exposed data, no logging, no backups of production data.
+- High: a control for an in-scope criterion is missing on a live system, or cannot be backfilled for the Type 2 period.
+- Medium: partial design, manual-only evidence. A control not yet built on a pre-production repo is at most Medium.
+- Low: control works; documentation missing, stale, or unapproved.
+
+Rank: Blockers first, then controls that cannot be backfilled for a Type 2 period (logging, scheduled reviews, backups), then by severity, clustering findings by control family.
+
+## Procedure (full gap)
+
+1. Load state and pick the mode. Confirm `tsc_scope`, `report_type`, and `audit_period` (Type 2) or `type1_report_date` (Type 1).
+2. Scan: run `python <soc2>/scripts/scan.py <repo root> --if-stale` (use `python3` if `python` is missing; on Windows set `PYTHONIOENCODING=utf-8`). Signals only, never a verdict.
+3. Select controls from the index: in scope when any criterion on its TSC line belongs to an in-scope category (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy) and its `Applies when` holds. Mark the rest `n/a` with a one-line reason; these feed the system description's "criteria not relevant" section.
+4. For each selected control, open its catalog entry. Gather evidence (its scan signals, then code, IaC, CI, documents). Judge Type 1 against `Type 1 test` and `Type 1 pass` (single instance, as of date). Judge Type 2 against `Type 2 test` and `Type 2 pass` (whole period). Do not invent criteria.
+5. Every non-`designed` control becomes a finding written as condition / criteria / cause / effect, citing `<ID> → <TSC>` with the TSC taken from that control's catalog TSC line (for example `AC-17 → CC6.1`, `AC-02 → CC6.1`, `CHG-04 → CC8.1`).
+6. Tailor every recommendation to `system.cloud`: use the matching column of `cloud-equivalents.md`, never an AWS service for a GCP or Azure system.
+7. Type 2 gap mode only: evidence continuity and sampling simulation per `references/audit-modes.md`.
+8. PBC list: from each evaluated control's `Evidence` field, grouped by source system (IdP, cloud console, Git host, HR system, ticketing, vendor files) with a merge key so one artifact serves several controls. For each system-generated population record the source system and the query or report parameters so the auditor can re-run it (IPE). Always include the "Report deliverables you own" rows.
+9. Remediation roadmap by rank. Add a "Do today" line whenever a Blocker exists (for example: rotate the exposed key; enable backups on the production database).
+10. Write `docs/soc2/audit-report.md` from `references/report-template.md`. Also write drafts `docs/soc2/system-description.md` and `docs/soc2/management-assertion.md` from the two templates when they do not exist (if they exist, report gaps against the template; never overwrite). Keep the disclaimer at top and bottom of each.
+11. Update `.soc2/state.json`: append `soc2-audit` to `completed`; record scope decisions. Never remove entries.
+12. Tell the user: mode, headline counts, the "Do today" line, top three findings, and file paths.
+
+## Report deliverables you own
+
+A SOC 2 report contains documents written by management, not the auditor. Flag each as a PBC row and offer the drafts:
+- System description (Section III, AICPA DC 200, DC1-DC9), kept current by GOV-13 → CC2.2. GOV-08 is the inventory it draws on.
+- Management's written assertion (Section II, AT-C 205), plus the management representation letter; the CPA firm usually supplies its own wording.
+- Subservice organizations and CSOCs, carve-out (default) or inclusive method (GOV-11 → CC9.2). Inclusive requires the subservice organization's own assertion and auditor access; carve-out excludes its controls and lists the CSOCs you rely on.
+- Your own CUECs for customers (GOV-12 → CC2.3).
+- Your own bridge (gap) letter for customers between your report's period end and the next report: signed by your management, not audited, usually covering 3 months or less.
 
 ## Hard rules
 
-- `secrets.hardcoded_hits > 0` is always a High finding against `AC-17 → CC6.1`. Locate the hits without printing them: use a file-and-line-only search (for example `grep -rlE <pattern> .` for files, or `grep -rnE <pattern> . | cut -d: -f1,2`, never the full matching line), and redact any matched text before it enters the transcript or report. Report file path and line number only. The report, chat reply, and state file must never reproduce a secret value, not even partially. Recommend rotating every exposed credential and removing it from git history.
-- Every finding and recommendation cites a catalog control ID and a TSC criterion. Every ID must exist in the catalog; look it up, never guess.
-- Pass/fail comes only from the catalog `Pass rule`.
-- Do not edit the user's code or infrastructure during an audit. Findings and recommendations only; offer `soc2-type1-readiness` or `soc2-type2-operations` for fixes and `soc2-policies` for missing policy documents.
-- Write findings as condition / criteria / cause / effect: what was observed, which control and criterion it falls short of, why, and the consequence.
-- Phrase uncertainty plainly ("not evidenced in the repository") rather than asserting a failure the repository cannot show.
+- Secrets: `secrets.hardcoded_hits > 0` is a Blocker against `AC-17 → CC6.1`. Get locations only with `python <soc2>/scripts/scan.py <repo root> --secrets` (prints `path:line` and a count, never the value). Never print, quote, or partially reproduce a secret in the chat, report, or state. Recommend: rotate or revoke, remove from code, purge from git history, and move to a secret manager.
+- "It's just a test key": still rotate or revoke it, remove it, and purge it from history; a test key in history trains the habit and is often valid somewhere. Downgrade below Blocker only with proof the key is invalid (provider shows it revoked, or it is a documented fake format), recorded with the owner and date. Never echo it to check.
+- Every finding and recommendation cites a catalog control ID that exists in the index; look it up, never guess.
+- Do not edit the user's code or infrastructure. Offer `soc2-type1-readiness` or `soc2-type2-operations` for fixes and `soc2-policies` for missing policies. The only files this skill writes are the three docs above and state.
+- Templates are drafts for management and CPA review, never final report text.
+- Phrase uncertainty plainly ("not evidenced in the repository").
 
 ## Chaining
 
-After the report, suggest the next skill: High findings in code or infrastructure go to `soc2-type1-readiness`; missing evidence cadence goes to `soc2-type2-operations`; missing policies go to `soc2-policies`.
+Blockers and High code or infrastructure findings → `soc2-type1-readiness`; missing evidence cadence → `soc2-type2-operations`; missing policies → `soc2-policies`.

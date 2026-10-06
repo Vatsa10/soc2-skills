@@ -2,13 +2,15 @@
 
 > This skill prepares for a SOC 2 audit; it is not an attestation. Only a licensed CPA firm can issue a SOC 2 Type 1 or Type 2 report.
 
-Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Scan cache: `.soc2/scan.json` (<scan timestamp>)
+Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Mode: <full gap / Type 2 gap / pre-period readiness> | Scan cache: `.soc2/scan.json` (<scan timestamp>)
 
 ## 1. Executive summary
 
+- Do today: <one line per Blocker, e.g. "Rotate the credential at path:line and purge it from history"; or "None">
 - Overall readiness: <No gaps found against in-scope catalog controls (not an attestation) / Gaps found, remediation needed / Not ready> for <Type 1 | Type 2>
-- Controls evaluated: <N> in scope | PASS <n> | PARTIAL <n> | FAIL <n> | N/A <n> (each N/A has a reason)
-- Findings: High <n> | Medium <n> | Low <n>
+- Controls evaluated: <N> in scope | designed <n> | partial <n> | missing <n> | needs-evidence <n> | n/a <n> (each n/a has a reason)
+- Findings: Blocker <n> | High <n> | Medium <n> | Low <n>
+- Period warning (Type 2, if applicable): <window already started or ended and most controls missing: the elapsed part cannot be backfilled; consider a later window or a Type 1>
 - Top three risks: <one line each, each citing `ID → TSC`>
 - Recommended next step: <one line>
 
@@ -18,8 +20,9 @@ Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Scan cache: `.soc2/scan.json` (<sc
 |---|---|
 | TSC in scope | <security, availability, processing_integrity, confidentiality, privacy> |
 | Report type | <type1 or type2> |
-| Point in time (Type 1) or audit period (Type 2) | <date, or start to end> |
+| As-of date (Type 1) or audit period (Type 2) | <date, or start to end> |
 | System | <name, cloud(s), data classes, from `.soc2/state.json`> |
+| Subservice organizations and method | <e.g. cloud provider, IdP: carve-out> |
 | Out of scope | <components, TSC, with reason> |
 
 ## 3. Methodology
@@ -27,66 +30,79 @@ Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Scan cache: `.soc2/scan.json` (<sc
 1. Repository scan (`scan.py`): signals only, treated as hints, not proof.
 2. Code and IaC inspection to confirm or contradict each signal.
 3. Document review: `docs/soc2/*`, `docs/policies/*`, and evidence the user supplied.
-4. Each in-scope catalog control evaluated against its `Pass rule`, using the Type 1 test or Type 2 test column per report type.
-5. Type 2 only: evidence-existence check across the whole period and a sampling simulation using the catalog sampling guide (sample sizes are common auditor practice, not AICPA mandates).
+4. Each in-scope catalog control judged against its `Type 1 test` / `Type 1 pass` or `Type 2 test` / `Type 2 pass`.
+5. Type 2 gap only: evidence continuity across the whole period and a sampling simulation using the catalog sampling guide (sample sizes are common auditor practice, not AICPA mandates). Pre-period readiness: evidence-live-by dates instead of sampling.
 
-Limits: the assessor sees the repository and supplied documents, not the cloud account, IdP, or HR records. Controls that rest on those sources are rated on the evidence provided.
+Limits: the assessor sees the repository and supplied documents, not the cloud account, IdP, or HR records. Controls resting on those sources are `needs-evidence` until evidence is supplied. The severity tiers are a readiness rubric; auditors report deviations and may qualify their opinion.
 
 ## 4. Findings
 
-Severity: High = missing control for a criterion, hardcoded secrets, or no logging. Medium = partial design or manual-only evidence. Low = documentation gap.
+Severity: Blocker = live exposure now (secrets in repo, public data, no logging, no production backups). High = missing control on a live system, or not backfillable for the Type 2 period. Medium = partial design, manual-only evidence, or not yet built on a pre-production repo. Low = documentation gap.
 
-| # | ID → TSC | Severity | Condition | Criteria | Cause | Effect | Recommendation |
-|---|---|---|---|---|---|---|---|
-| 1 | AC-17 → CC6.1 | High | <what was observed; file path and line only, never the secret value> | <the catalog Pass rule / TSC criterion> | <why it happened> | <risk if left> | <specific fix, owner> |
-| 2 | OPS-05 → CC7.2 | Medium | <observed> | <criterion> | <cause> | <effect> | <fix> |
+| # | ID → TSC | Severity | Status | Condition | Criteria | Cause | Effect | Recommendation (for <cloud>) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | AC-17 → CC6.1 | Blocker | missing | <what was observed; file path and line only, never the secret value> | <catalog Type 1 pass or Type 2 pass; TSC criterion> | <why> | <risk if left> | <rotate or revoke, remove, purge history; owner> |
+| 2 | OPS-05 → <TSC> | Medium | partial | <observed> | <criterion> | <cause> | <effect> | <fix from the system's cloud-equivalents column> |
 
-Rows above are format examples; replace them. Order by severity, then by TSC. Every row cites a catalog control ID and a TSC criterion.
+Rows above are format examples; replace them. Order: Blockers, then non-backfillable Type 2 controls, then severity; cluster by control family. Every row cites a catalog control ID and the TSC from its catalog TSC line.
 
 ### Findings by TSC
 
-| TSC | Controls evaluated | PASS | PARTIAL | FAIL | N/A |
-|---|---|---|---|---|---|
-| Security (CC1-CC9) | | | | | |
-| Availability (A1) | | | | | |
-| Processing Integrity (PI1) | | | | | |
-| Confidentiality (C1) | | | | | |
-| Privacy (P1-P8) | | | | | |
+| TSC | Evaluated | designed | partial | missing | needs-evidence | n/a |
+|---|---|---|---|---|---|---|
+| Security (CC1-CC9) | | | | | | |
+| Availability (A1) | | | | | | |
+| Processing Integrity (PI1) | | | | | | |
+| Confidentiality (C1) | | | | | | |
+| Privacy (P1-P8) | | | | | | |
 
-## 5. Exceptions likely (Type 2 only)
+## 5. Exceptions likely (Type 2 gap only)
 
-Omit this section for Type 1. For each control where the simulated sample would fail:
+Omit for Type 1 and pre-period readiness.
 
-| ID → TSC | Frequency | Sample size | Simulated result | Why an exception is likely | Period gap |
-|---|---|---|---|---|---|
-| AC-05 → CC6.2 | Quarterly | 2 | 1 of 2 evidenced | Q2 review has no record | Q2 |
+| ID → TSC | Frequency | Population source (IPE) | Sample size | Simulated result | Why an exception is likely | Period gap |
+|---|---|---|---|---|---|---|
+| AC-05 → <TSC> | Quarterly | IdP user export, query <params> | 2 | 1 of 2 evidenced | Q2 review has no record | Q2 |
 
-Example row; replace. Include controls that have not fired inside the period (cannot be tested) and controls changed mid-period.
+Example row; replace. Include scheduled controls that missed a run (a deviation), annual items lapsing mid-period, and controls changed mid-period. Event-driven controls with no events in the period are "no occurrence, not tested" (keep the empty population report), not exceptions. One failing sample usually means expanded testing or a reported deviation.
+
+### Evidence live by (pre-period readiness only)
+
+| ID → TSC | Frequency | Evidence live by | First in-period run | Risk |
+|---|---|---|---|---|
 
 ## 6. PBC (provided by client) list
 
-| Request | Control IDs | Owner | Due |
-|---|---|---|---|
-| IdP MFA policy export and enrollment report | AC-02 → CC6.1, CC6.2 | <name/role> | <YYYY-MM-DD> |
-| User access review records, one per quarter in the period | AC-05 → CC6.2, CC6.3 | <name/role> | <YYYY-MM-DD> |
-| Cloud audit trail configuration and retention setting | OPS-06 → CC7.2; OPS-07 → CC7.2 | <name/role> | <YYYY-MM-DD> |
-| Branch protection settings and sample of merged PRs with approvals | CHG-02 → CC8.1, CC5.1; CHG-05 → CC8.1 | <name/role> | <YYYY-MM-DD> |
-| Latest restore test record | AV-04 → A1.3 | <name/role> | <YYYY-MM-DD> |
-| Incident response plan and tabletop exercise record | OPS-10 → CC7.4; OPS-11 → CC7.4, CC7.5 | <name/role> | <YYYY-MM-DD> |
-| Security training completion report | GOV-05 → CC1.4, CC2.2 | <name/role> | <YYYY-MM-DD> |
-| Vendor inventory with latest SOC reports and CUEC review | VND-03 → CC9.2 | <name/role> | <YYYY-MM-DD> |
+Grouped by source system. Merge key = one artifact that serves several controls.
 
-Example rows; build the real list from each evaluated control's `Evidence` field. Set due dates before fieldwork. For Type 2, request full population lists for the whole period, not only samples.
+| Source system | Merge key | Request | Control IDs | Owner | Due |
+|---|---|---|---|---|---|
+| IdP | idp-users | MFA policy export and enrollment report; user list with query parameters (IPE) | AC-02 → CC6.1 | <role> | <YYYY-MM-DD> |
+| IdP | idp-access-reviews | User access review records, one per quarter in the period | AC-05 → <TSC> | <role> | <YYYY-MM-DD> |
+| Cloud console | cloud-audit-trail | Audit trail configuration and retention setting | OPS-06 → <TSC>; OPS-07 → <TSC> | <role> | <YYYY-MM-DD> |
+| Cloud console | cloud-backups | Backup configuration and latest restore test record | AV-04 → <TSC> | <role> | <YYYY-MM-DD> |
+| Git host | git-change-mgmt | Branch protection or rulesets export; merged PRs with approvals; deploy log reconciled to approved PRs | CHG-02 → <TSC>; CHG-04 → CC8.1 | <role> | <YYYY-MM-DD> |
+| Ticketing | incidents | Incident response plan, incident population, tabletop record | OPS-10 → <TSC>; OPS-11 → <TSC> | <role> | <YYYY-MM-DD> |
+| HR system | hr-training | Security training completion report | GOV-05 → <TSC> | <role> | <YYYY-MM-DD> |
+| Vendor files | vendor-soc-reports | Vendor inventory; latest SOC reports (period overlap, opinion, exceptions, carve-outs); bridge letters; CUEC review | VND-03 → <TSC> | <role> | <YYYY-MM-DD> |
+| Management | report-deliverables | Draft system description (DC 200), `docs/soc2/system-description.md` | GOV-13 → <TSC> | <role> | <YYYY-MM-DD> |
+| Management | report-deliverables | Draft management assertion (Section II) and representation letter, `docs/soc2/management-assertion.md` | GOV-13 → <TSC> | <role> | <YYYY-MM-DD> |
+| Management | report-deliverables | Subservice organizations, method (carve-out or inclusive), CSOCs relied on | GOV-11 → <TSC> | <role> | <YYYY-MM-DD> |
+| Management | report-deliverables | CUECs published to customers | GOV-12 → <TSC> | <role> | <YYYY-MM-DD> |
+| Management | report-deliverables | Own bridge letter for customers (signed by management, unaudited, usually 3 months or less) | GOV-13 → <TSC> | <role> | <YYYY-MM-DD> |
+
+Example rows; build the real list from each evaluated control's `Evidence` field and fill each `<TSC>` from that control's TSC line in the control index. Set due dates before fieldwork. For Type 2, request full populations for the whole period and, for each, record the source system and the query or report parameters so the auditor can re-run it (IPE).
 
 ## 7. Remediation roadmap
 
-| Window | Focus | Items (finding # / control ID) | Owner |
-|---|---|---|---|
-| 0-30 days | All High findings; anything blocking the report date | | |
-| 31-60 days | Medium findings; start evidence automation for Type 2 | | |
-| 61-90 days | Low findings; documentation; dry run of the PBC list | | |
+| Window | Focus | Items (finding # / `ID → TSC`) | Owner | Done when |
+|---|---|---|---|---|
+| Do today | Blockers | | | |
+| 0-30 days (or week 1 of a 2-week plan) | Non-backfillable Type 2 controls; High findings | | | |
+| 31-60 days (or week 2) | Medium findings; evidence automation | | | |
+| 61-90 days | Low findings; documentation; PBC dry run; system description and assertion review | | | |
 
-For Type 2, flag any fix that changes a control mid-period: record it through change management with an effective date, or defer it to the next period.
+"Done when" is the control's `Type 1 pass` or `Type 2 pass` condition. For Type 2, a fix that changes a control mid-period goes through change management with an effective date, or waits for the next period.
 
 ## 8. Disclaimer
 
