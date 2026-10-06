@@ -28,13 +28,13 @@ Paths are relative to this skill folder; the shared files live in the sibling `s
 ## Procedure
 
 1. Load state. Confirm `tsc_scope`, `report_type`, and (Type 2) `audit_period`. If absent, ask briefly and write them to state.
-2. Scan: use `.soc2/scan.json` if no tracked file is newer; otherwise run `python ../soc2/scripts/scan.py <repo_path> --json` (path relative to this skill folder) and cache the output to `.soc2/scan.json`. Scan output is signals only, never a verdict.
+2. Scan: run `python ../soc2/scripts/scan.py <repo_path> --if-stale` (path relative to this skill folder). It always prints JSON, reuses the `.soc2/scan.json` cache unless tracked files changed, and rewrites it when they did. Scan output is signals only, never a verdict.
 3. Select every catalog control whose TSC criteria fall in scope and whose `Applies when` is true. Mark the rest N/A with a one-line reason.
 4. For each selected control, in catalog order:
    - Gather evidence: the scan signals listed on the control, then read the code, IaC, CI config, and documents that confirm or contradict them.
-   - Apply the control's `Pass rule` exactly. Use the Type 1 test column for Type 1 and the Type 2 test column for Type 2. Do not invent criteria.
+   - Apply the control's `Pass rule` exactly. For Type 1, use the Type 1 test column at single-instance, as-of-date scope and ignore the Pass rule's sampling language. For Type 2, use the Type 2 test column with period-wide evidence and sampling. Do not invent criteria.
    - Rate PASS, PARTIAL, FAIL, or N/A. A signal alone is at most "likely implemented": mark PARTIAL and request evidence in the PBC list unless the code or a document proves it.
-   - Every non-PASS control becomes a finding with severity from the rubric. Cite `control ID -> TSC criterion` (for example `AC-17 -> CC6.1`, taking the criterion from that control's `TSC` field).
+   - Every non-PASS control becomes a finding with severity from the rubric. Cite `control ID → TSC criterion` (for example `AC-17 → CC6.1`, taking the criterion from that control's `TSC` field).
 5. Type 2 additions, per control:
    - Evidence continuity: confirm evidence would exist for the whole period, not just now. Check for a control that has not yet fired in the period, a missed cycle (quarterly, monthly), a gap in continuous logging, or a mid-period change.
    - Sampling simulation: take the control's frequency, use the catalog sampling table to pick a sample size, choose samples spread across the period (first month included, not only the latest), and test each against the Pass rule. Any sample that would fail goes in "Exceptions likely".
@@ -46,7 +46,7 @@ Paths are relative to this skill folder; the shared files live in the sibling `s
 
 ## Hard rules
 
-- `secrets.hardcoded_hits > 0` is always a High finding against `AC-17 -> CC6.1`. Locate the hits by searching the repo, and report file path and line number only. The report, chat reply, and state file must never reproduce a secret value, not even partially. Recommend rotating every exposed credential and removing it from git history.
+- `secrets.hardcoded_hits > 0` is always a High finding against `AC-17 → CC6.1`. Locate the hits without printing them: use a file-and-line-only search (for example `grep -rlE <pattern> .` for files, or `grep -rnE <pattern> . | cut -d: -f1,2`, never the full matching line), and redact any matched text before it enters the transcript or report. Report file path and line number only. The report, chat reply, and state file must never reproduce a secret value, not even partially. Recommend rotating every exposed credential and removing it from git history.
 - Every finding and recommendation cites a catalog control ID and a TSC criterion. Every ID must exist in the catalog; look it up, never guess.
 - Pass/fail comes only from the catalog `Pass rule`.
 - Do not edit the user's code or infrastructure during an audit. Findings and recommendations only; offer `soc2-type1-readiness` or `soc2-type2-operations` for fixes and `soc2-policies` for missing policy documents.

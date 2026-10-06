@@ -6,10 +6,10 @@ Date: <YYYY-MM-DD> | Assessor: <agent/tool> | Scan cache: `.soc2/scan.json` (<sc
 
 ## 1. Executive summary
 
-- Overall readiness: <Ready / Ready with remediation / Not ready> for <Type 1 | Type 2>
+- Overall readiness: <No gaps found against in-scope catalog controls (not an attestation) / Gaps found, remediation needed / Not ready> for <Type 1 | Type 2>
 - Controls evaluated: <N> in scope | PASS <n> | PARTIAL <n> | FAIL <n> | N/A <n> (each N/A has a reason)
 - Findings: High <n> | Medium <n> | Low <n>
-- Top three risks: <one line each, each citing `ID -> TSC`>
+- Top three risks: <one line each, each citing `ID → TSC`>
 - Recommended next step: <one line>
 
 ## 2. Scope
@@ -36,10 +36,10 @@ Limits: the assessor sees the repository and supplied documents, not the cloud a
 
 Severity: High = missing control for a criterion, hardcoded secrets, or no logging. Medium = partial design or manual-only evidence. Low = documentation gap.
 
-| # | ID -> TSC | Severity | Condition | Criteria | Cause | Effect | Recommendation |
+| # | ID → TSC | Severity | Condition | Criteria | Cause | Effect | Recommendation |
 |---|---|---|---|---|---|---|---|
-| 1 | AC-17 -> CC6.1 | High | <what was observed; file path and line only, never the secret value> | <the catalog Pass rule / TSC criterion> | <why it happened> | <risk if left> | <specific fix, owner> |
-| 2 | OPS-05 -> CC7.2 | Medium | <observed> | <criterion> | <cause> | <effect> | <fix> |
+| 1 | AC-17 → CC6.1 | High | <what was observed; file path and line only, never the secret value> | <the catalog Pass rule / TSC criterion> | <why it happened> | <risk if left> | <specific fix, owner> |
+| 2 | OPS-05 → CC7.2 | Medium | <observed> | <criterion> | <cause> | <effect> | <fix> |
 
 Rows above are format examples; replace them. Order by severity, then by TSC. Every row cites a catalog control ID and a TSC criterion.
 
@@ -57,9 +57,9 @@ Rows above are format examples; replace them. Order by severity, then by TSC. Ev
 
 Omit this section for Type 1. For each control where the simulated sample would fail:
 
-| ID -> TSC | Frequency | Sample size | Simulated result | Why an exception is likely | Period gap |
+| ID → TSC | Frequency | Sample size | Simulated result | Why an exception is likely | Period gap |
 |---|---|---|---|---|---|
-| AC-05 -> CC6.2 | Quarterly | 2 | 1 of 2 evidenced | Q2 review has no record | Q2 |
+| AC-05 → CC6.2 | Quarterly | 2 | 1 of 2 evidenced | Q2 review has no record | Q2 |
 
 Example row; replace. Include controls that have not fired inside the period (cannot be tested) and controls changed mid-period.
 
