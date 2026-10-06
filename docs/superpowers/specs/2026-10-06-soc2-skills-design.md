@@ -33,7 +33,7 @@ Web research verifies criterion numbering against the official AICPA TSC, Type 2
 
 ## 3. Repository layout
 
-The workspace root becomes the repo (suggested GitHub name: `soc2-skills`).
+The workspace root becomes the repo: https://github.com/Vatsa10/soc2-skills
 
 ```
 SOC2-Skills/
@@ -41,18 +41,18 @@ SOC2-Skills/
 ├── AGENTS.md                     # Codex entry: points to skills/, router-first rule
 ├── CLAUDE.md                     # same rule for Claude Code
 ├── skills/
-│   ├── soc2/                     # router
+│   ├── soc2/                     # router + shared core
 │   │   ├── SKILL.md
 │   │   ├── scripts/scan.py       # shared stdlib scanner
-│   │   └── references/routing.md
+│   │   └── references/
+│   │       ├── routing.md
+│   │       ├── tsc-criteria.md   # all TSC criteria + points of focus
+│   │       └── control-catalog.md # single source of truth for controls
 │   ├── soc2-architect/
 │   ├── soc2-type1-readiness/
 │   ├── soc2-type2-operations/
 │   ├── soc2-audit/
 │   └── soc2-policies/            # each: SKILL.md + references/*.md (+ templates/ for policies)
-├── references/
-│   ├── tsc-criteria.md           # all TSC criteria + points of focus
-│   └── control-catalog.md        # single source of truth for controls
 ├── tests/
 │   ├── fixtures/                 # small fixture repos for scanner
 │   ├── test_scan.py
@@ -66,7 +66,7 @@ SOC2-Skills/
 
 Decisions:
 - One `skills/` tree serves both tools; no per-tool duplicated copies.
-- Skills reference shared files via relative paths (`../../references/`), so the pack installs as a whole. `install.py` copies the full tree.
+- Shared files live inside the router skill (`skills/soc2/references/`, `skills/soc2/scripts/`). Sub-skills reference them as `../soc2/...`. This holds both in the repo and when installed, because skills install as sibling folders (`~/.claude/skills/<name>`, `~/.codex/skills/<name>`, or the plugin's `skills/`). `install.py` copies all six skill folders together.
 - Language: Markdown for skills; Python 3 stdlib only for scripts (no third-party dependencies).
 
 ## 4. Router (`skills/soc2`)
@@ -151,7 +151,7 @@ Shared rules:
 
 ## 7. Control catalog
 
-`references/control-catalog.md`, roughly 80–100 controls, all five TSC. Entry format:
+`skills/soc2/references/control-catalog.md`, roughly 80–100 controls, all five TSC. Entry format:
 
 ```markdown
 ### AC-03 — MFA enforced for all workforce access
@@ -165,7 +165,7 @@ Shared rules:
 - Pass rule: PASS only if enforced (not optional) AND no bypass accounts
 ```
 
-`references/tsc-criteria.md` lists every official criterion ID with title and summarized points of focus.
+`skills/soc2/references/tsc-criteria.md` lists every official criterion ID with title and summarized points of focus.
 
 ## 8. Testing
 
@@ -173,6 +173,7 @@ Run with `python -m unittest discover tests`.
 
 - `test_scan.py`: three fixtures (empty repo, Terraform+AWS+GitHub Actions, app without controls) → expected signal JSON.
 - `test_catalog.py`: every entry parses; every TSC ID exists in `tsc-criteria.md`; every criterion is covered by at least one control; every `Scan signals` key exists in the scanner schema.
+- Every sub-skill's `../soc2/...` references resolve (asserted in `test_catalog.py`).
 - `router-evals.md`: about 10 prompt + repo-state cases with expected routes, checked manually in Claude Code and Codex.
 
 ## 9. Build order
