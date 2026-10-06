@@ -28,7 +28,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 3. Logs are forwarded to a central log platform and retained for at least 12 months, with the most recent 90 days immediately searchable. [OPS-07 → CC7.2]
 4. Log storage is access-controlled, and write-once or tamper-evident settings are used so that engineers cannot alter or delete logs. [OPS-06 → CC7.2]
 5. System clocks are synchronized to a trusted NTP source. [OPS-05 → CC7.2]
-6. Alerts are configured for repeated failed logins, new administrator creation, root account use, disabled logging, and unusual data egress; alerts page the on-call engineer. [OPS-08 → CC7.2]
+6. Alerts are configured for repeated failed logins, new administrator creation, root account use, disabled logging, and unusual data egress; alerts page the on-call engineer (coverage: {{oncall_hours}}). [OPS-08 → CC7.2]
 7. Alerts are acknowledged within 15 minutes and triaged within 1 hour; resolution is recorded in the ticket. [OPS-08 → CC7.3]
 8. Vulnerability scans of production are run at least monthly, and external penetration tests at least annually. [OPS-01 → CC7.1] [MON-02 → CC7.1]
 9. Vulnerability remediation deadlines (the single source for all policies) are: critical within 15 days, high within 30 days, medium within 90 days and low within 180 days or risk-accepted in writing. The clock starts when the vulnerability is detected, or when the vendor patch is released if that is later. A vulnerability listed in the CISA Known Exploited Vulnerabilities catalogue, or known to be exploited in the wild, is remediated or mitigated within 7 days (a {{company}} commitment based on common practice, not a standard). Exceptions are risk-accepted in writing with an expiry date. [OPS-01 → CC7.1]
@@ -42,7 +42,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 | Role | Responsibility |
 |---|---|
 | {{owner}} | Owns logging standards and alert coverage. |
-| On-call engineer | Triages alerts 24x7. |
+| On-call engineer | Triages alerts (coverage: {{oncall_hours}}). |
 | Engineering lead | Implements log sources and retention. |
 
 ## Exceptions
