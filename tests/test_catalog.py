@@ -121,6 +121,38 @@ class CatalogTest(unittest.TestCase):
             self.assertEqual(rows[cid][1:], [c["title"], tsc, cat, f["Frequency"],
                                              f["Owner"], f["Scan signals"]], cid)
 
+    def test_index_is_build_output(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("build_index", ROOT / "scripts" / "build_index.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        want = mod.render((REF / "control-catalog.md").read_text(encoding="utf-8"))
+        got = (REF / "control-index.md").read_text(encoding="utf-8")
+        self.assertEqual(got, want, "run python scripts/build_index.py")
+
+    def test_arrow_citations_match_catalog(self):
+        cs = controls()
+        tsc = {cid: {t.strip() for t in c["fields"]["TSC"].split("|")[0].split(",")}
+               for cid, c in cs.items()}
+        pat = re.compile(r"\b([A-Z]{2,3}-\d{2})\s*→\s*((?:(?:CC|A|PI|C|P)\d+\.\d+)(?:\s*(?:,|/|and)\s*(?:CC|A|PI|C|P)\d+\.\d+)*)")
+        placeholder = re.compile(r"\b([A-Z]{2,3}-\d{2})\s*→\s*<TSC>")
+        bad = []
+        for md in sorted((ROOT / "skills").rglob("*.md")):
+            for n, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
+                for m in placeholder.finditer(line):
+                    if m.group(1) not in tsc:
+                        bad.append(f"unknown id {md.relative_to(ROOT)}:{n} {m.group(0)}")
+                for m in pat.finditer(line):
+                    cid = m.group(1)
+                    where = f"{md.relative_to(ROOT)}:{n} {m.group(0)}"
+                    if cid not in tsc:
+                        bad.append("unknown id " + where)
+                        continue
+                    for t in re.findall(r"(?:CC|A|PI|C|P)\d+\.\d+", m.group(2)):
+                        if t not in tsc[cid]:
+                            bad.append(f"{t} not on {cid} TSC line: {where}")
+        self.assertEqual(bad, [], "\n".join(bad))
+
     def test_cloud_equivalents_exists(self):
         text = (REF / "cloud-equivalents.md").read_text(encoding="utf-8")
         for word in ("AWS", "GCP", "Azure"):

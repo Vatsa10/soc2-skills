@@ -13,3 +13,4 @@ Skills (all under `skills/`; install all six together, sub-skills reference `../
 - `soc2-policies`: 18 core policy templates (small-team aware)
 
 Tests: `python -m unittest discover tests -v` (stdlib only).
+After editing `skills/soc2/references/control-catalog.md`, run `python scripts/build_index.py` to regenerate `control-index.md` (a test enforces it).
