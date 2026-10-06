@@ -4,7 +4,7 @@ This skill prepares for a SOC 2 audit; it is not an attestation. Only a licensed
 
 ## Full gap
 
-Follow the procedure in `SKILL.md`. Omit the "Exceptions likely" section for Type 1.
+Follow the procedure in `SKILL.md`. Controls in `state.excluded[]` appear as `n/a` with their stored reason, never as findings. Omit the "Exceptions likely" section for Type 1.
 
 ## Type 2 gap
 
@@ -16,7 +16,7 @@ Full gap plus, per control:
 - Automated controls: a test of one stands only if the ITGCs (AC-*, CHG-*) are effective for the whole period.
 - Periods shorter than 12 months use proportionally smaller samples; some report users do not accept periods under 6 months.
 
-If the window has started or ended and most controls are `missing`: say plainly the elapsed part cannot be backfilled, and offer a later window or a Type 1.
+If the window has started or ended and most controls are `missing`: say plainly the elapsed part cannot be backfilled, and offer a later window or a Type 1. If `state.audit_period_decision` is set ("keep", "moved", "type1-first"), follow it and do not re-ask; if the window start or end is before today and it is unset, ask one confirm line (keep the window / move it / Type 1 first) and record the answer.
 
 ## Pre-period readiness
 

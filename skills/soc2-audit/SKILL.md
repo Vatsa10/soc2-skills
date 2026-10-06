@@ -16,7 +16,7 @@ Resolve `../soc2` against the directory containing this SKILL.md (not the shell'
 - Control index: `<soc2>/references/control-index.md`. Read it FIRST. Open full catalog entries in `<soc2>/references/control-catalog.md` only for controls you evaluate (search for `### <ID>`); never read the whole catalog at once.
 - Criteria: `<soc2>/references/tsc-criteria.md`. Cloud equivalents: `<soc2>/references/cloud-equivalents.md`.
 - Scanner: `<soc2>/scripts/scan.py`.
-- State: `.soc2/state.json` in the user's repo (`tsc_scope`, `report_type`, `audit_period`, `type1_report_date`, `system{... cloud[] ... workforce}`, `decisions`, `completed`). Never re-ask a key present in state. Ask only missing keys, in the router's plain wording (`<soc2>/SKILL.md`), and write only confirmed answers.
+- State: `.soc2/state.json` in the user's repo (`tsc_scope`, `report_type`, `audit_period`, `audit_period_decision`, `type1_report_date`, `system{... cloud[] ... workforce}`, `decisions`, `excluded`, `completed`). `system.cloud` overrides `scan.cloud`; the scan only suggests. Never re-ask a key present in state. Ask only missing keys, in the router's plain wording (`<soc2>/SKILL.md`), and write only confirmed answers.
 - Existing `docs/soc2/*` and `docs/policies/*` in the user's repo.
 - Mode details: `references/audit-modes.md`. Templates: `references/report-template.md`, `references/system-description-template.md`, `references/management-assertion-template.md`.
 
@@ -38,6 +38,7 @@ Status per control: `designed` | `partial` | `missing` | `needs-evidence` | `n/a
 
 Severity per finding:
 - Blocker: live exposure now: secrets in the repo, publicly exposed data, no logging, no backups of production data.
+  Backups under Security-only: if Availability is out of scope and a database exists, cite the missing backup/restore as `RSK-05 → CC9.1` (BCP and recovery; catalog TSC line CC9.1, A1.2) and add the note "AV-03 and AV-04 apply if Availability is added to scope". Do not cite AV-03 or AV-04 as findings while Availability is out of scope, and do not remap them.
 - High: a control for an in-scope criterion is missing on a live system, or cannot be backfilled for the Type 2 period.
 - Medium: partial design, manual-only evidence. A control not yet built on a pre-production repo is at most Medium.
 - Low: control works; documentation missing, stale, or unapproved.
@@ -48,14 +49,16 @@ Rank: Blockers first, then controls that cannot be backfilled for a Type 2 perio
 
 1. Load state and pick the mode. Confirm `tsc_scope`, `report_type`, and `audit_period` (Type 2) or `type1_report_date` (Type 1).
 2. Scan: run `python <soc2>/scripts/scan.py <repo root> --if-stale` (use `python3` if `python` is missing; on Windows set `PYTHONIOENCODING=utf-8`). Signals only, never a verdict.
-3. Select controls from the index: in scope when any criterion on its TSC line belongs to an in-scope category (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy) and its `Applies when` holds. Mark the rest `n/a` with a one-line reason; these feed the system description's "criteria not relevant" section.
+3. Select controls: run `python <soc2>/scripts/scan.py <repo root> --scope <tsc_scope as a comma list>`; it prints the in-scope control IDs one per line from the index (any cited TSC in an in-scope series; Security always). Keep those whose `Applies when` holds. Everything else is `n/a` with a one-line reason; these feed the system description's "criteria not relevant" section. Controls in `state.excluded[]` (`{control, reason, date}`) are `n/a` with the stored reason; show them that way and never re-list them as findings or ask about them again.
+   Count each control once, under its first in-scope criterion (the first TSC on its line that belongs to an in-scope series); add the footnote "in scope via secondary criterion" when the first-listed criterion is out of scope.
 4. For each selected control, open its catalog entry. Gather evidence (its scan signals, then code, IaC, CI, documents). Judge Type 1 against `Type 1 test` and `Type 1 pass` (single instance, as of date). Judge Type 2 against `Type 2 test` and `Type 2 pass` (whole period). Do not invent criteria.
-5. Every non-`designed` control becomes a finding written as condition / criteria / cause / effect, citing `<ID> → <TSC>` with the TSC taken from that control's catalog TSC line (for example `AC-17 → CC6.1`, `AC-02 → CC6.1`, `CHG-04 → CC8.1`).
+5. Every non-`designed` control (other than `n/a`) becomes a finding written as condition / criteria / cause / effect, citing `<ID> → <TSC>` with the TSC taken from that control's catalog TSC line (for example `AC-17 → CC6.1`, `AC-02 → CC6.1`, `CHG-04 → CC8.1`).
 6. Tailor every recommendation to `system.cloud`: use the matching column of `cloud-equivalents.md`, never an AWS service for a GCP or Azure system.
+6a. Cloud check: if a secret hit's kind implies a provider (aws-key-id, azure-key, gcp-sa-key) that differs from `system.cloud`, ask once whether that provider is in use. If yes, add it to `system.cloud` (confirmed) and raise GOV-11 → CC9.2 (subservice organization) and re-tailor recommendations; if no, treat the key as stray and still a Blocker.
 7. Type 2 gap mode only: evidence continuity and sampling simulation per `references/audit-modes.md`.
 8. PBC list: from each evaluated control's `Evidence` field, grouped by source system (IdP, cloud console, Git host, HR system, ticketing, vendor files) with a merge key so one artifact serves several controls. For each system-generated population record the source system and the query or report parameters so the auditor can re-run it (IPE). Always include the "Report deliverables you own" rows.
 9. Remediation roadmap by rank. Add a "Do today" line whenever a Blocker exists (for example: rotate the exposed key; enable backups on the production database).
-10. Write `docs/soc2/audit-report.md` from `references/report-template.md`. Also write drafts `docs/soc2/system-description.md` and `docs/soc2/management-assertion.md` from the two templates when they do not exist (if they exist, report gaps against the template; never overwrite). Keep the disclaimer at top and bottom of each.
+10. Write `docs/soc2/audit-report.md` from `references/report-template.md`. Also write drafts `docs/soc2/system-description.md` and `docs/soc2/management-assertion.md` from the two templates when they do not exist (if they exist, report gaps against the template; never overwrite). Do not copy the templates byte for byte: fill every field already known from state (company, system name, owner, cloud(s), workforce, data classes, tsc_scope, report type, as-of date or period, subservice organizations from `system.cloud`, criteria marked `n/a` with reasons, `excluded[]`). Write `TODO: management to supply` for every field you cannot know (service commitments, incidents, CUECs wording, signer name and title). Never invent a value. Keep the disclaimer at top and bottom of each.
 11. Update `.soc2/state.json`: append `soc2-audit` to `completed`; record scope decisions. Never remove entries.
 12. Tell the user: mode, headline counts, the "Do today" line, top three findings, and file paths.
 
@@ -70,7 +73,7 @@ A SOC 2 report contains documents written by management, not the auditor. Flag e
 
 ## Hard rules
 
-- Secrets: `secrets.hardcoded_hits > 0` is a Blocker against `AC-17 → CC6.1`. Get locations only with `python <soc2>/scripts/scan.py <repo root> --secrets` (prints `path:line` and a count, never the value). Never print, quote, or partially reproduce a secret in the chat, report, or state. Recommend: rotate or revoke, remove from code, purge from git history, and move to a secret manager.
+- Secrets: `secrets.hardcoded_hits > 0` is a Blocker against `AC-17 → CC6.1`. Get locations only with `python <soc2>/scripts/scan.py <repo root> --secrets` (prints `path:line kind` per hit and `total: N`, never the value; kind is one of aws-key-id, private-key, url-credential, db-password, azure-key, gcp-sa-key, token, generic-secret). Cite path:line and kind in the finding. Also check `git ls-files` and `.gitignore`: a hit in an untracked, ignored file is still a rotate-if-shared item but is not in the repository history unless it was committed earlier. Never print, quote, or partially reproduce a secret in the chat, report, or state. Recommend: rotate or revoke, remove from code, purge from git history, and move to a secret manager.
 - "It's just a test key": still rotate or revoke it, remove it, and purge it from history; a test key in history trains the habit and is often valid somewhere. Downgrade below Blocker only with proof the key is invalid (provider shows it revoked, or it is a documented fake format), recorded with the owner and date. Never echo it to check.
 - Every finding and recommendation cites a catalog control ID that exists in the index; look it up, never guess.
 - Do not edit the user's code or infrastructure. Offer `soc2-type1-readiness` or `soc2-type2-operations` for fixes and `soc2-policies` for missing policies. The only files this skill writes are the three docs above and state.
