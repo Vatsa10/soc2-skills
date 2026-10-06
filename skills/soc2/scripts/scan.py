@@ -78,7 +78,7 @@ def _files(root):
         for name in filenames:
             p = Path(dirpath) / name
             try:
-                if p.stat().st_size <= MAX_BYTES:
+                if p.is_file() and p.stat().st_size <= MAX_BYTES:
                     yield p
             except OSError:
                 continue
@@ -123,7 +123,10 @@ def scan(root):
             s["incident"]["runbook"] = True
         if p.suffix.lower() not in TEXT_EXT:
             continue
-        text = p.read_text(encoding="utf-8", errors="ignore")
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
         for k, rx in PATTERNS.items():
             if k not in hits and rx.search(text):
                 hits.add(k)
@@ -164,7 +167,13 @@ def _stale(root, cache):
     if not cache.exists():
         return True
     t = cache.stat().st_mtime
-    return any(p.stat().st_mtime > t for p in _files(root))
+    for p in _files(root):
+        try:
+            if p.stat().st_mtime > t:
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def main(argv=None):

@@ -52,6 +52,23 @@ class ScanTest(unittest.TestCase):
             self.assertEqual(s["cloud"], [])
             self.assertEqual(s["iac"], [])
 
+    def test_unreadable_file_does_not_crash(self):
+        from unittest import mock
+        real = Path.read_text
+
+        def flaky(self, *a, **k):
+            if self.name == "locked.py":
+                raise PermissionError("denied")
+            return real(self, *a, **k)
+
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "locked.py").write_text("okta", encoding="utf-8")
+            (p / "ok.py").write_text("keycloak", encoding="utf-8")
+            with mock.patch.object(Path, "read_text", flaky):
+                s = scan.scan(p)
+            self.assertEqual(s["auth"]["idp"], ["keycloak"])
+
     def test_cli_bad_path_exit_2(self):
         r = subprocess.run([sys.executable, str(SCRIPT), str(FIX / "nope")],
                            capture_output=True, encoding="utf-8")
