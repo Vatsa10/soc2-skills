@@ -27,7 +27,7 @@ The choice made, in one or two sentences, with the concrete service or configura
 
 ## Controls satisfied
 
-Look up each ID in `../../soc2/references/control-catalog.md`; copy the TSC from its `TSC:` line.
+Look up each ID (index: `../../soc2/references/control-index.md`; full entry: search `### <ID>` in `../../soc2/references/control-catalog.md`); copy the TSC from its `TSC:` line.
 
 | Control → TSC | How this decision satisfies it |
 |---|---|
@@ -37,9 +37,12 @@ Look up each ID in `../../soc2/references/control-catalog.md`; copy the TSC from
 
 Every control above must name an automated evidence source. If none exists, say so and open a follow-up.
 
-| Control | Evidence artifact | Source system | Frequency | Collection method |
-|---|---|---|---|---|
-| <ID> | <artifact> | <system/API> | <cadence> | <scheduled job, export, or API pull> |
+| Control | Evidence artifact | Source system | Frequency (catalog value) | Owner (role) | Collection method |
+|---|---|---|---|---|---|
+| <ID> | <artifact> | <system/API> | <Continuous/automated, Per event, Daily, Weekly, Monthly, Quarterly or Annual> | <role> | <scheduled job, export, or API pull> |
+
+Type 1 pass (design and implementation, single instance as of a date): <what will be shown>
+Type 2 pass (operated across the period): <what the sample will show>
 
 Gaps (controls with no automated evidence): <list, or "none">
 
@@ -61,4 +64,4 @@ Gaps (controls with no automated evidence): <list, or "none">
 
 - Use real catalog IDs and the TSC from the catalog entry. Do not invent IDs or mappings.
 - Fill `Evidence produced` for Type 1 projects too; it is cheap now and required once the Type 2 period starts.
-- Record each ADR in `.soc2/state.json` under `decisions` as `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>"}`, one entry per control the ADR satisfies.
+- Record each ADR in `.soc2/state.json` under `decisions` as `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "NNNN"}`, one entry per control the ADR satisfies. The `adr` value is the ADR number, so later skills can open `docs/soc2/adr/NNNN-*.md`.
