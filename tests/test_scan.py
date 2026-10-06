@@ -206,13 +206,53 @@ class SignalSemanticsTest(unittest.TestCase):
             self.assertTrue(scan_files({"a.tf": f'resource "{rx}" "x" {{}}'})["backups"]["configured"], rx)
 
     def test_cloud_audit_trail_variants(self):
-        for rx in ("aws_cloudtrail", "google_logging_organization_sink", "azurerm_monitor_diagnostic_setting"):
+        for rx in ("aws_cloudtrail", "google_logging_organization_sink", "azurerm_monitor_log_profile"):
             self.assertTrue(scan_files({"a.tf": f'resource "{rx}" "x" {{}}'})["logging"]["cloud_audit_trail"], rx)
 
+    def test_azure_audit_trail_needs_administrative_category(self):
+        bare = 'resource "azurerm_monitor_diagnostic_setting" "x" { name = "d" }'
+        self.assertFalse(scan_files({"a.tf": bare})["logging"]["cloud_audit_trail"])
+        admin = bare[:-1] + ' enabled_log { category = "Administrative" } }'
+        self.assertTrue(scan_files({"a.tf": admin})["logging"]["cloud_audit_trail"])
+        bicep = "resource d 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = { name: 'a' }"
+        self.assertFalse(scan_files({"m.bicep": bicep})["logging"]["cloud_audit_trail"])
+        self.assertTrue(scan_files({"m.bicep": bicep + "\n// category: 'Administrative'"})["logging"]["cloud_audit_trail"])
+        cli = "az monitor diagnostic-settings subscription create --name a --logs '[{\"category\":\"Administrative\"}]'"
+        self.assertTrue(scan_files({"d.sh": cli})["logging"]["cloud_audit_trail"])
+
+    def test_central_log_needs_setting_or_agent_not_workspace_alone(self):
+        ws = 'resource "azurerm_log_analytics_workspace" "w" { name = "w" }'
+        self.assertFalse(scan_files({"a.tf": ws})["logging"]["centralized"])
+        self.assertFalse(scan_files({"m.bicep": "resource w 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {}"})["logging"]["centralized"])
+        self.assertTrue(scan_files({"a.tf": 'resource "azurerm_monitor_diagnostic_setting" "d" {}'})["logging"]["centralized"])
+        self.assertTrue(scan_files({"m.bicep": "resource d 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {}"})["logging"]["centralized"])
+        self.assertTrue(scan_files({"a.tf": 'resource "azurerm_monitor_data_collection_rule" "r" {}'})["logging"]["centralized"])
+
+    def test_cosmos_tls_and_continuous_backup(self):
+        self.assertTrue(scan_files({"m.bicep": "properties: { minimalTlsVersion: 'Tls12' }"})["encryption"]["tls"])
+        self.assertTrue(scan_files({"m.bicep": "backupPolicy: {\n type: 'Continuous'\n }"})["backups"]["configured"])
+        self.assertTrue(scan_files({"a.tf": 'backup {\n type = "Continuous"\n }'})["backups"]["configured"])
+        self.assertFalse(scan_files({"m.bicep": "properties: { x: 1 }"})["backups"]["configured"])
+
+    def test_backup_dirs_skipped(self):
+        s = scan_files({"docs/policies/_backup/old.md": "x", "docs/policies/a.md": "x"})
+        self.assertEqual(s["policies"], ["a"])
+
     def test_runbook_placeholders(self):
-        self.assertFalse(scan_files({"docs/incident-response.md": "Owner: <name>\nPage {{oncall}}"})["incident"]["runbook"])
-        self.assertFalse(scan_files({"docs/incident-runbook.md": "Contact <Security Lead>"})["incident"]["runbook"])
-        self.assertTrue(scan_files({"docs/incident-response.md": "Page the on-call. See <https://x.example/y> and <br>"})["incident"]["runbook"])
+        self.assertFalse(scan_files({"docs/incident-response-plan.md": "Owner: <name>\nPage {{oncall}}"})["incident"]["runbook"])
+        self.assertFalse(scan_files({"docs/runbook.md": "Contact <Security Lead>"})["incident"]["runbook"])
+        self.assertTrue(scan_files({"docs/incident-response-plan.md": "Page the on-call. See <https://x.example/y> and <br>"})["incident"]["runbook"])
+
+    def test_runbook_only_for_runbook_files(self):
+        def rb(path):
+            return scan_files({path: "Page the on-call."})["incident"]["runbook"]
+        self.assertTrue(rb("docs/runbooks/db-failover.md"))
+        self.assertTrue(rb("ops/runbook-payments.md"))
+        self.assertTrue(rb("playbook-ransomware.md"))
+        self.assertTrue(rb("docs/incident-response-plan.md"))
+        self.assertFalse(rb("docs/policies/incident-response.md"))
+        self.assertFalse(rb("docs/policies/runbooks/x.md"))
+        self.assertFalse(rb("docs/incident-response.md"))
 
 
 class SecretsTest(unittest.TestCase):
@@ -268,8 +308,8 @@ class SecretsCliTest(unittest.TestCase):
                                capture_output=True, encoding="utf-8")
             self.assertEqual(r.returncode, 0, r.stderr)
             lines = r.stdout.strip().splitlines()
-            self.assertIn("src/a.py:2", lines)
-            self.assertIn("local.settings.json:1", lines)
+            self.assertIn("src/a.py:2 aws-key-id", lines)
+            self.assertIn("local.settings.json:1 azure-key", lines)
             self.assertEqual(lines[-1], "total: 2")
             self.assertNotIn("AKIA", r.stdout)
             self.assertNotIn("Zm9v", r.stdout)
@@ -279,6 +319,90 @@ class SecretsCliTest(unittest.TestCase):
         r = subprocess.run([sys.executable, str(SCRIPT), str(FIX / "empty"), "--secrets"],
                            capture_output=True, encoding="utf-8")
         self.assertEqual(r.stdout.strip(), "total: 0")
+
+
+class SecretKindTest(unittest.TestCase):
+    def kinds(self, text, is_env=False):
+        return [k for _, k in scan.secret_hits(text, is_env=is_env)]
+
+    def test_kind_labels(self):
+        cases = [
+            ('k = "AKIAABCDEFGHIJKLMNOP"', "aws-key-id"),
+            ("-----BEGIN RSA PRIVATE KEY-----", "private-key"),
+            ('u = "postgres://admin:hunter2@db:5432/app"', "url-credential"),
+            ('password: "hunter2hunter2"', "db-password"),
+            ('Server=x;Password=abcd1234efgh;', "db-password"),
+            ('c = "AccountKey=abcDEF123456789xyz=="', "azure-key"),
+            ('c = "Endpoint=sb://x/;SharedAccessKey=abcDEF123456789xyz0123="', "azure-key"),
+            ('{"private_key": "-----BEGIN PRIVATE KEY-----\\nMIIE"}', "gcp-sa-key"),
+            ('t = "ghp_' + "a" * 36 + '"', "token"),
+            ('api_key = "abcdef123456"', "generic-secret"),
+        ]
+        for text, kind in cases:
+            self.assertEqual(self.kinds(text), [kind], text)
+
+    def test_kinds_are_the_allowed_set(self):
+        self.assertEqual(scan.SECRET_KINDS, {"aws-key-id", "private-key", "url-credential", "db-password",
+                                             "azure-key", "gcp-sa-key", "token", "generic-secret"})
+
+
+class NameBasedSecretTest(unittest.TestCase):
+    KEY = "Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA=="
+
+    def hits(self, name, text):
+        return scan_files({name: text})["secrets"]["hardcoded_hits"]
+
+    def test_json_settings_by_name(self):
+        for fn in ("local.settings.json", "appsettings.json", "appsettings.Production.json"):
+            self.assertEqual(self.hits(fn, '{"Values": {"COSMOS_KEY": "%s"}}' % self.KEY), 1, fn)
+        self.assertEqual(self.hits("local.settings.json", '{"ServiceBusSecret": "%s"}' % self.KEY), 1)
+        self.assertEqual(self.hits("prod.env", "COSMOS_KEY=%s" % self.KEY), 1)
+        self.assertEqual(self.hits(".env", 'STORAGE_KEY="%s"' % self.KEY), 1)
+
+    def test_sharedaccesskey(self):
+        text = '{"c": "Endpoint=sb://x.servicebus.windows.net/;SharedAccessKeyName=r;SharedAccessKey=abcDEF123456789xyz0123="}'
+        self.assertEqual(self.hits("a.json", text), 1)
+
+    def test_name_rule_exclusions(self):
+        for v in ("UseDevelopmentStorage=true", "@Microsoft.KeyVault(SecretUri=https://v.vault.azure.net/secrets/a)",
+                  "%COSMOS_KEY%", "${COSMOS_KEY}", "short", "https://x.vault.azure.net/"):
+            text = '{"Values": {"COSMOS_KEY": "%s", "AzureWebJobsStorage": "%s"}}' % (v, v)
+            self.assertEqual(self.hits("local.settings.json", text), 0, v)
+        self.assertEqual(self.hits("local.settings.json",
+                                   '{"Values": {"FUNCTIONS_WORKER_RUNTIME": "node-abcdefghijklmnopqrstu1"}}'), 0)
+
+    def test_name_rule_not_applied_to_other_files(self):
+        self.assertEqual(self.hits("config.json", '{"COSMOS_KEY": "%s"}' % self.KEY), 0)
+
+
+class ScopeCliTest(unittest.TestCase):
+    def run_scope(self, arg):
+        return subprocess.run([sys.executable, str(SCRIPT), str(FIX / "empty"), "--scope", arg],
+                              capture_output=True, encoding="utf-8")
+
+    def test_security_only(self):
+        r = self.run_scope("security")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        ids = r.stdout.split()
+        self.assertIn("GOV-01", ids)
+        self.assertIn("RSK-05", ids)  # cites CC9.1 as well as A1.2
+        self.assertNotIn("AV-03", ids)
+
+    def test_security_always_and_extra_category(self):
+        avail = set(self.run_scope("availability").stdout.split())
+        sec = set(self.run_scope("security").stdout.split())
+        self.assertIn("GOV-01", avail)
+        self.assertIn("AV-03", avail)
+        self.assertGreater(len(avail), len(sec))
+
+    def test_spaces_in_list(self):
+        self.assertEqual(self.run_scope("security, privacy").stdout, self.run_scope("security,privacy").stdout)
+
+    def test_unknown_key_errors(self):
+        r = self.run_scope("security,bogus")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("bogus", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
 
 
 if __name__ == "__main__":
