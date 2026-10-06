@@ -1,0 +1,8 @@
+{
+  "name": "soc2-skills",
+  "version": "0.1.0",
+  "description": "SOC 2 Type 1 & Type 2 architecture, operations, audit, and policy skills across all five Trust Services Criteria.",
+  "author": {"name": "Vatsa Joshi"},
+  "repository": "https://github.com/Vatsa10/soc2-skills",
+  "license": "MIT"
+}

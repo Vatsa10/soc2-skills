@@ -1,0 +1,12 @@
+{
+  "name": "soc2-skills",
+  "description": "SOC 2 skill pack for Claude Code",
+  "owner": {"name": "Vatsa Joshi"},
+  "plugins": [
+    {
+      "name": "soc2-skills",
+      "source": "./",
+      "description": "SOC 2 Type 1 & Type 2 architecture, operations, audit, and policy skills across all five Trust Services Criteria."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: soc2-type1-readiness
-description: Assess SOC 2 Type 1 readiness: whether in-scope controls are suitably designed and implemented at a point in time. Use when code/infrastructure exists and the user asks if controls are in place, wants a readiness check, or is preparing for a Type 1 report.
+description: Assess SOC 2 Type 1 readiness, i.e. whether in-scope controls are suitably designed and implemented at a point in time. Use when code/infrastructure exists and the user asks if controls are in place, wants a readiness check, or is preparing for a Type 1 report.
 ---
 
 # SOC 2 Type 1 Readiness
