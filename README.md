@@ -13,7 +13,7 @@ A pack of six skills for Claude Code and Codex that helps you design, implement,
 | `soc2-type1-readiness` | Point-in-time check that in-scope controls are suitably designed and implemented. |
 | `soc2-type2-operations` | Keep controls operating and generating evidence across the audit period. |
 | `soc2-audit` | Auditor-style gap assessment: findings, PBC evidence list, remediation plan. |
-| `soc2-policies` | 15 core policy templates mapped to TSC criteria and control IDs. |
+| `soc2-policies` | 18 core policy templates (small-team aware) mapped to TSC criteria and control IDs. |
 
 All six must be installed together: the phase skills reference the shared control catalog in `../soc2/references/`.
 
@@ -27,7 +27,9 @@ python scripts/install.py --target codex    # copies to ~/.agents/skills/
 python scripts/install.py --target claude --dest DIR   # custom directory
 ```
 
-The installer replaces existing copies of these six skills only and leaves other skills untouched. Codex reads user-level skills from `~/.agents/skills` (and repo-level skills from `.agents/skills`); `AGENTS.md` in this repo tells Codex to start at `skills/soc2/SKILL.md`.
+The installer replaces existing copies of these six skills only and leaves other skills untouched. Install all six together; installing a single skill is unsupported because the phase skills read the shared catalog in `../soc2/`.
+
+Repo-local install (skills travel with one project): use `--dest <repo>/.claude/skills` for Claude Code or `--dest <repo>/.agents/skills` for Codex, for example `python scripts/install.py --target codex --dest ../my-app/.agents/skills`.
 
 Claude Code plugin install from GitHub:
 
@@ -36,7 +38,23 @@ Claude Code plugin install from GitHub:
 /plugin install soc2-skills@soc2-skills
 ```
 
-The repo carries `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`; `skills/` at the repo root is discovered automatically.
+The repo carries `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (version 0.2.0); `skills/` at the repo root is discovered automatically. Run `claude plugin validate .` before a release. It warns that the repo-level `CLAUDE.md` is not loaded as plugin context; that file is for contributors and the warning is harmless.
+
+### Skill names
+
+A plugin install namespaces the skills: `/soc2-skills:soc2`, `/soc2-skills:soc2-architect`, `/soc2-skills:soc2-type1-readiness`, `/soc2-skills:soc2-type2-operations`, `/soc2-skills:soc2-audit`, `/soc2-skills:soc2-policies`. Copied installs (user or repo-local) expose the bare names `/soc2`, `/soc2-audit`, and so on. In Codex, invoke a skill with `$soc2`. In every case, prompts that mention SOC 2 trigger the skills automatically from their descriptions.
+
+### Codex: pointing your project at the pack
+
+`AGENTS.md` in this repo only applies when you work inside this repo. In your own project, rely on skill discovery (installed under `~/.agents/skills` or `<repo>/.agents/skills`), or add this snippet to your project's `AGENTS.md`:
+
+```
+For SOC 2 or compliance work, use the `soc2` skill ($soc2); it routes to the other soc2-* skills.
+```
+
+### Windows
+
+Set `PYTHONIOENCODING=utf-8` before running the scanner or installer (the default console encoding is cp1252 and fails on the first non-ASCII character). Use `python`; if it is missing, use `python3`.
 
 ## Usage
 

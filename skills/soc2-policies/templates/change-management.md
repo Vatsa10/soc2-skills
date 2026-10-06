@@ -4,8 +4,12 @@
 |---|---|
 | Company | {{company}} |
 | Policy owner | {{owner}} |
+| Approver | {{approver}} |
+| Approval date | {{approval_date}} |
+| Version | {{version}} |
 | Effective date | {{effective_date}} |
 | Review cadence | {{review_cadence}} |
+| Next review due | {{next_review}} |
 
 ## Purpose
 
@@ -29,7 +33,7 @@ _Numbers and timeframes in these statements are defaults. {{owner}} must confirm
 8. Separate environments are used for development, staging and production, and production data is not used in non-production environments unless masked. [CHG-06 → CC5.2] [CF-06 → C1.1]
 9. Developers do not have standing write access to production; elevated access is time-bound and logged. [AC-06 → CC6.3]
 10. Each quarter {{owner}} samples at least 10 production changes (or all, if fewer) and verifies review, testing and approval evidence. [MON-04 → CC4.1]
-11. Software dependencies are inventoried, and critical vulnerabilities are patched within 15 days and high within 30 days, and medium within 90 days. [OPS-02 → CC7.1]
+11. Software dependencies are inventoried, and vulnerable dependencies are remediated within the deadlines in Logging and Monitoring Policy statement 9. [OPS-02 → CC7.1]
 12. (if processing_integrity in scope) Changes to code that accepts external input must include automated tests of input validation (type, range, required fields), and rejected inputs are logged. [PI-02 → PI1.2]
 
 ## Roles
@@ -49,6 +53,10 @@ Exceptions to this policy must be requested in writing, state the business reaso
 
 Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
-## Review
+## Review and approval
 
-This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. The effective date and approver are recorded in version control history. Next review is due before the end of the cadence period following {{effective_date}}.
+This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. Approval (approver name and date) is recorded in the header and in the revision history below; version-control history alone is not evidence of approval. After a material change, all personnel re-acknowledge the policy set within 30 days (Information Security Policy, statement 5). Next review is due by the date in the header.
+
+| Version | Date | Change | Approved by |
+|---|---|---|---|
+| {{version}} | {{effective_date}} | Initial issue | {{approver}} |

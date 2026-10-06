@@ -4,8 +4,12 @@
 |---|---|
 | Company | {{company}} |
 | Policy owner | {{owner}} |
+| Approver | {{approver}} |
+| Approval date | {{approval_date}} |
+| Version | {{version}} |
 | Effective date | {{effective_date}} |
 | Review cadence | {{review_cadence}} |
+| Next review due | {{next_review}} |
 
 ## Purpose
 
@@ -19,7 +23,7 @@ All customer, employee, business and system data held by {{company}} or its sub-
 
 _Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
 
-1. Retention periods are: customer data for the term of the contract plus 30 days after termination; application logs 12 months; security and audit logs 12 months (hot 90 days); backups 35 days; financial records 7 years; employee records 7 years after separation. [CF-03 → C1.2]
+1. Retention periods are: customer data for the term of the contract plus 30 days after termination; application logs 12 months; security and audit logs 12 months (hot 90 days); backups 35 days; financial records for the period required by applicable law ({{company}} default: 7 years, the US minimum for many financial records); employee records as required by applicable employment law ({{company}} default: 7 years after separation). [CF-03 → C1.2]
 2. Customer data is deleted from production systems within 30 days of contract termination or a verified deletion request, and from backups when they expire. [CF-04 → C1.2]
 3. Deletion is automated where possible (lifecycle rules, scheduled jobs), and {{owner}} checks at least annually that the jobs ran as designed. [CF-04 → C1.2]
 4. Cloud storage and databases are deleted using the provider's deletion service; for physical media, drives are wiped using NIST 800-88 methods or physically destroyed. [AC-14 → C1.2]
@@ -47,6 +51,10 @@ Exceptions to this policy must be requested in writing, state the business reaso
 
 Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
-## Review
+## Review and approval
 
-This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. The effective date and approver are recorded in version control history. Next review is due before the end of the cadence period following {{effective_date}}.
+This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. Approval (approver name and date) is recorded in the header and in the revision history below; version-control history alone is not evidence of approval. After a material change, all personnel re-acknowledge the policy set within 30 days (Information Security Policy, statement 5). Next review is due by the date in the header.
+
+| Version | Date | Change | Approved by |
+|---|---|---|---|
+| {{version}} | {{effective_date}} | Initial issue | {{approver}} |

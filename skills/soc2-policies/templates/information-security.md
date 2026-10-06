@@ -4,8 +4,12 @@
 |---|---|
 | Company | {{company}} |
 | Policy owner | {{owner}} |
+| Approver | {{approver}} |
+| Approval date | {{approval_date}} |
+| Version | {{version}} |
 | Effective date | {{effective_date}} |
 | Review cadence | {{review_cadence}} |
+| Next review due | {{next_review}} |
 
 ## Purpose
 
@@ -19,11 +23,11 @@ All {{company}} employees, contractors and interns, and all systems, application
 
 _Numbers and timeframes in these statements are defaults. {{owner}} must confirm {{company}} can meet each one before approving this policy, because an auditor tests against the policy as written. Statements that start with "(if ... in scope)" apply only when that category is in the audit scope._
 
-1. Leadership approves this policy and all subordinate security policies in writing before publication, and re-approves them at least once every 12 months. [GOV-07 → CC2.2]
+1. Leadership approves this policy and all subordinate security policies in writing before publication, and re-approves them on the cadence in each policy header ({{review_cadence}}), which is never less often than every 12 months. [GOV-07 → CC2.2]
 2. {{company}} designates {{owner}} as the accountable owner of the information security program, with authority to block releases and access grants that violate policy. [GOV-04 → CC1.3]
 3. Security responsibilities are written into job descriptions or role charters for every engineering, IT and people-operations role. [GOV-04 → CC1.3]
 4. Leadership reviews security metrics (open vulnerabilities, access review completion, incident count, training completion) at least quarterly and records the review in meeting minutes. [GOV-03 → CC1.2]
-5. All policies are published in a central location that every employee can read, and each employee acknowledges the policy set in writing within 30 days of hire and annually thereafter. [GOV-07 → CC2.2]
+5. All policies are published in a central location that every employee can read, and each employee acknowledges the policy set in writing within 30 days of hire and annually thereafter, and re-acknowledges within 30 days after any material change to a policy. [GOV-07 → CC2.2]
 6. The security program is risk-based: a documented risk assessment, performed at least annually, drives control selection and priorities. [RSK-01 → CC3.1]
 7. Security objectives are documented, measurable and reviewed annually, including target time-to-patch, target access-review completion and target incident response times. [RSK-01 → CC3.1]
 8. Controls are mapped to the Trust Services Criteria in scope and each control has a named owner. [CTL-01 → CC5.1]
@@ -48,6 +52,10 @@ Exceptions to this policy must be requested in writing, state the business reaso
 
 Violations are investigated by {{owner}} and People Operations (or whoever handles HR). Confirmed violations may result in access removal, retraining, disciplinary action up to termination, and termination of contractor agreements. Violations that expose customer data are handled under the Incident Response Policy.
 
-## Review
+## Review and approval
 
-This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. The effective date and approver are recorded in version control history. Next review is due before the end of the cadence period following {{effective_date}}.
+This policy is reviewed on the cadence in the header ({{review_cadence}}), and also after any major incident or material change to systems or scope. Approval (approver name and date) is recorded in the header and in the revision history below; version-control history alone is not evidence of approval. After a material change, all personnel re-acknowledge the policy set within 30 days (Information Security Policy, statement 5). Next review is due by the date in the header.
+
+| Version | Date | Change | Approved by |
+|---|---|---|---|
+| {{version}} | {{effective_date}} | Initial issue | {{approver}} |
