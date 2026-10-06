@@ -82,7 +82,7 @@ Scoping: Security (Common Criteria, CC1–CC9) is required in every SOC 2 report
 - **P3.2** — Explicit consent: explicit consent is obtained and documented where required (e.g., sensitive personal information) before collection.
 - **P4.1** — Use limitation: personal information is used only for the purposes identified in the notice and consented to.
 - **P4.2** — Retention: personal information is retained only as long as needed for its objectives and protected from erroneous or unauthorized deletion.
-- **P4.3** — Disposal: personal information is securely disposed of when no longer needed, including copies held in backups and by vendors where applicable.
+- **P4.3** — Disposal: personal information is securely disposed of, destroyed, or redacted when no longer needed; requests for deletion are captured and honored (consider backups and vendor copies as a practical matter).
 - **P5.1** — Access: authenticated data subjects can access their personal information; requests are handled within committed timelines, and denials are explained.
 - **P5.2** — Correction: data subjects can request correction or amendment; corrections are communicated to third parties that received the data where required.
 - **P6.1** — Disclosure to third parties: personal information is disclosed only for identified purposes and with consent where required.

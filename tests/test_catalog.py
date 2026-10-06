@@ -4,8 +4,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "skills" / "soc2" / "references"
-KEYS = ["TSC", "Applies when", "Implement", "Scan signals",
-        "Type 1 test", "Type 2 test", "Evidence", "Pass rule"]
+KEYS = ["TSC", "Applies when", "Implement", "Scan signals", "Frequency", "Owner",
+        "Type 1 test", "Type 2 test", "Evidence", "Type 1 pass", "Type 2 pass"]
+FREQUENCIES = {"Continuous/automated", "Per event", "Daily", "Weekly", "Monthly",
+               "Quarterly", "Annual"}
 ID_RE = re.compile(r"^### ([A-Z]{2,3}-\d{2}) — (.+)$")
 
 
@@ -77,6 +79,53 @@ class CatalogTest(unittest.TestCase):
                 continue
             for k in (s.strip() for s in sig.split(",")):
                 self.assertIn(k, keys, f"{cid} unknown signal {k}")
+
+    def test_frequency_and_owner_values(self):
+        for cid, c in controls().items():
+            self.assertIn(c["fields"]["Frequency"], FREQUENCIES, cid)
+            self.assertTrue(c["fields"]["Owner"], cid)
+
+    def test_type1_and_type2_pass_are_distinct(self):
+        for cid, c in controls().items():
+            f = c["fields"]
+            self.assertNotEqual(f["Type 1 pass"], f["Type 2 pass"], cid)
+            self.assertNotIn("Pass rule", f, cid)
+
+    def test_shared_decision_controls(self):
+        cs = controls()
+        want = {"GOV-11": {"CC9.2", "CC2.3"}, "GOV-12": {"CC2.3"},
+                "GOV-13": {"CC2.2", "CC2.3"}, "PI-06": {"PI1.3"},
+                "PI-07": {"PI1.4"}, "PR-17": {"P1.1", "P3.1"},
+                "AC-02": {"CC6.1"}, "CHG-04": {"CC8.1"}, "AC-17": {"CC6.1"}}
+        for cid, tsc in want.items():
+            self.assertIn(cid, cs)
+            got = {t.strip() for t in cs[cid]["fields"]["TSC"].split("|")[0].split(",")}
+            self.assertEqual(got, tsc, cid)
+
+    def test_no_old_signal_name(self):
+        text = (REF / "control-catalog.md").read_text(encoding="utf-8")
+        self.assertNotIn("logging.cloudtrail", text)
+
+    def test_index_matches_catalog(self):
+        text = (REF / "control-index.md").read_text(encoding="utf-8")
+        rows = {}
+        for line in text.splitlines():
+            cells = [x.strip() for x in line.strip().strip("|").split("|")]
+            if len(cells) == 7 and re.fullmatch(r"[A-Z]{2,3}-\d{2}", cells[0]):
+                rows[cells[0]] = cells
+        cs = controls()
+        self.assertEqual(set(rows), set(cs))
+        for cid, c in cs.items():
+            f = c["fields"]
+            tsc, cat = (x.strip() for x in f["TSC"].split("| Category:"))
+            self.assertEqual(rows[cid][1:], [c["title"], tsc, cat, f["Frequency"],
+                                             f["Owner"], f["Scan signals"]], cid)
+
+    def test_cloud_equivalents_exists(self):
+        text = (REF / "cloud-equivalents.md").read_text(encoding="utf-8")
+        for word in ("AWS", "GCP", "Azure"):
+            self.assertIn(word, text)
+        self.assertRegex(text, r"\| *AWS *\| *GCP *\| *Azure *\|")
 
 
 if __name__ == "__main__":
