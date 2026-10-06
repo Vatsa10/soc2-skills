@@ -30,12 +30,12 @@ If `.soc2/state.json` does not exist, create it containing only the keys the use
 
 Ask only keys that are missing from state and the conversation, in ONE message of at most four plain-language questions, in the router's wording. If invoked through the router, the router already asked; ask nothing it covered. Do not ask one question at a time.
 
-1. Report type: Type 1 is a snapshot that shows controls are designed and in place on one date; Type 2 shows they worked over a period (3 to 12 months). Ask your customer which one they accept. Rule of thumb: Type 1 first if you need something soon, Type 2 once controls have run for a few months. (Skip if `report_type` is known.)
+1. Report type, explained in three lines: Type 1 is a snapshot (are the controls designed and in place on one date?); Type 2 is a movie (did the controls keep working over a period, usually 3 to 12 months?); ask your customer which one they accept. Rule of thumb: first report, or a deal is waiting, take Type 1 now and Type 2 next; if the customer demands Type 2, go straight to it. (Skip if `report_type` is known.)
 2. Date: the Type 1 as-of date, or the Type 2 window start and end. Ask for the as-of date only when `report_type` is `type1` or the user asks for a Type 1 report.
-3. Cloud(s): AWS, GCP, Azure, multi-cloud, or on-premises.
+3. Cloud(s): AWS, GCP, Azure, other, or none yet (several may apply).
 4. Company name, who owns the project, and team size (workforce).
 
-TSC scope: offer Security as the default (always in scope) plus one line per other category: Availability (uptime and recovery commitments), Processing Integrity (data processed completely, accurately, on time), Confidentiality (protecting customer-confidential data), Privacy (personal information lifecycle). Accept or narrow it. Then infer, do not interrogate: system type, tenancy, tools and data classes come from what the user already described or from the repo. If a data class is unclear and it changes controls (PHI, cardholder data, government IDs), ask it inside the same message as a fifth clause of question 4 only when necessary.
+TSC scope (inside question 1's message, not a fifth question): Security is the default and always in scope, plus one line each for Availability (uptime and recovery promises), Processing Integrity (data processed completely and accurately, such as invoices and payments), Confidentiality (protecting data marked confidential), Privacy (personal information handled per your notice). Accept or narrow it. Then infer, do not interrogate: system type, tenancy, tools and data classes come from what the user already described or from the repo. If a data class is unclear and it changes controls (PHI, cardholder data, government IDs), ask it inside the same message as a fifth clause of question 4 only when necessary.
 
 If PHI or cardholder data is in play, state that HIPAA or PCI DSS applies separately and SOC 2 does not replace them.
 
@@ -105,7 +105,7 @@ If `.soc2/state.json` has `completed` containing `soc2-architect` and `docs/soc2
 
 Edit `.soc2/state.json` (keep unrelated keys untouched):
 
-- `system`: set `name`, `company`, `owner`, `cloud` (array: `aws`, `gcp`, `azure`), `type`, `tenancy`, `workforce`, `tools`, `data_classes` (arrays where the router schema uses arrays), only for values answered or inferred and confirmed.
+- `system`: set `name`, `company`, `owner`, `cloud` (array: `aws`, `gcp`, `azure`, `other`), `type`, `tenancy`, `workforce`, `tools`, `data_classes` (arrays where the router schema uses arrays), only for values answered or inferred and confirmed.
 - `tsc_scope`, `report_type`, `audit_period`, `type1_report_date` (only when `report_type` is `type1` or the user asked for a Type 1 report) only when answered or explicitly accepted; leave skipped keys absent. If the user wants Type 1 now and Type 2 later, set `next_report` to `type2 after type1`.
 - `decisions`: append `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "<NNNN>"}` per control satisfied by each ADR.
 - `completed`: add `"soc2-architect"` if not present.

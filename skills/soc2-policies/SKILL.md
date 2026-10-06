@@ -12,7 +12,7 @@ Generates the 18 core policy documents an auditor expects, filled in for the use
 ## Inputs
 
 1. Read `.soc2/state.json` in the user's repo. Fields used: `tsc_scope`, `report_type`, `audit_period`, `system.name`, `system.cloud`, `system.workforce`, `system.tools`, `system.data_classes`, `decisions`, `completed`, and optionally `system.company` and `system.owner`. Never re-ask a key that is present.
-2. If the file is missing, do not stop: ask for the missing keys with the router's plain wording (see First run in `../soc2/SKILL.md`: report type with a one-line Type 1 vs Type 2 explanation, cloud, company, owner, team size; scope with Security as default) and create `.soc2/state.json`.
+2. If the file is missing, do not stop: ask for the missing keys with the router's plain wording (see First run in `../soc2/SKILL.md`: report type with the same three-line Type 1 vs Type 2 explanation and rule of thumb, the Type 1 date or Type 2 window, cloud, company, owner, team size; scope with Security as default) and create `.soc2/state.json`.
 3. Ask only for what is missing, in one message:
    - `company`: legal or trading name (stored as `system.company`).
    - `owner`: name and role of the person accountable for the policies (stored as `system.owner`).
@@ -40,7 +40,7 @@ Generates the 18 core policy documents an auditor expects, filled in for the use
    - Vulnerability deadlines live in one place only (Logging and Monitoring Policy statement 9); other policies reference it. If the company changes a number, change it there only. The 7-day window for known-exploited vulnerabilities is a stated company commitment based on common practice, not a standard; say so when asking for confirmation.
    - Password rules follow NIST SP 800-63B-4 (15 characters when a password is the only authenticator, 8 minimum with MFA, accept at least 64 characters, no composition rules, no scheduled rotation, blocklist check, rate limiting). The template sets 12 with MFA; do not weaken it below 8 or drop the 15-character password-only rule.
    - Align retention periods and RTO/RPO with decisions. Where `system.data_classes` includes personal or health data, keep the Privacy, Retention and Classification statements as written and name those data classes.
-   - Flag any statement that contradicts the scan signals in `.soc2/scan.json` (for example MFA required everywhere while `auth.mfa_hint` is false, or 12-month log retention while `logging.retention_days` is lower) as a gap, not as a claim.
+   - Flag any statement that contradicts the scan signals in `.soc2/scan.json` (when present) (for example MFA required everywhere while `auth.mfa_hint` is false, or 12-month log retention while `logging.retention_days` is lower) as a gap, not as a claim.
    - Statements must stay concrete (who, what, how often); never replace them with generic wording.
 4. Small-team profile (`system.workforce` of 10 or fewer). Do not leave statements the company cannot run; rewrite them concretely, keep the tag, and list each rewrite under Open gaps:
    - On-call `business hours` or `none`: replace "24x7" and "at any hour" with "during business hours ({{hours}} in {{timezone}}); alerts outside those hours are reviewed by the next business day", and replace the 1-hour and 15-minute triage windows with "1 business hour" (Incident Response statements 1, 2, 9, 11; Logging and Monitoring statements 6, 7). Ask which hours.

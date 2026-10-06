@@ -48,7 +48,7 @@ One row per control in `control-catalog.md` (106 controls). Read this index firs
 | AC-14 | Secure disposal of hardware and media | CC6.5, C1.2 | Security, Confidentiality | Per event | IT admin | none |
 | AC-15 | Endpoint management and disk encryption | CC6.7, CC6.8 | Security | Continuous/automated | IT admin | none |
 | AC-16 | Anti-malware / EDR on endpoints and servers | CC6.8 | Security | Continuous/automated | IT admin | none |
-| AC-17 | Secrets management and no hardcoded credentials | CC6.1 | Security | Continuous/automated | Engineering lead | secrets.scanning, secrets.hardcoded_hits |
+| AC-17 | Secrets management and no hardcoded credentials | CC6.1 | Security | Continuous/automated | Engineering lead | secrets.scanning, secrets.hardcoded_hits, auth.ci_oidc |
 | AC-18 | External boundary protection | CC6.6 | Security | Continuous/automated | Platform/DevOps lead | iac, cloud |
 | OPS-01 | Vulnerability scanning and patch SLAs | CC7.1 | Security | Monthly | Security owner | ci, deps.sast |
 | OPS-02 | Dependency vulnerability management | CC7.1 | Security | Continuous/automated | Engineering lead | deps.dependabot_or_renovate |

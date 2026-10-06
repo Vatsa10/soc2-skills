@@ -58,6 +58,7 @@ Write `.soc2/state.json` (creating the `.soc2/` folder) only with the user's con
 
 Notes on keys:
 - `type1_report_date` appears only when `report_type` is `type1` or the user asks for a Type 1 report.
+- `system.cloud` is an array of `aws`, `gcp`, `azure`, `other` (empty when none yet).
 - `system.workforce` is the head count. "Small team" means `workforce` of 10 or fewer.
 - `decisions[].adr` points to the decision record written by `soc2-architect`.
 - `next_report` records the plan after this report, for example `type2 after type1`.

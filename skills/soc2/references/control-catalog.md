@@ -647,7 +647,7 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 - TSC: CC6.1 | Category: Security
 - Applies when: applications use API keys, database passwords, tokens, or certificates
 - Implement: secrets stored in a manager (AWS Secrets Manager/Vault/Doppler); secret scanning (GitHub secret scanning/gitleaks/trufflehog) in CI and push protection; leaked secrets rotated immediately; service-account keys inventoried and rotated
-- Scan signals: secrets.scanning, secrets.hardcoded_hits
+- Scan signals: secrets.scanning, secrets.hardcoded_hits, auth.ci_oidc
 - Frequency: Continuous/automated
 - Owner: Engineering lead
 - Type 1 test: secret manager in use, scanning enabled, and no live secrets in the repository on the report date

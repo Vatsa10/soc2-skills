@@ -45,7 +45,7 @@ Use these only when intent is ambiguous or absent. Evaluate them in order; the f
 
 1. No `iac`, no code files, and `ci` empty: `soc2-architect`.
 2. `policies` signal empty and the user asks for anything compliance-related with no phase named: `soc2-policies`, then continue the chain.
-3. Code or IaC present and several core signals false (`auth.sso`, `logging.centralized`, `change_mgmt.codeowners`, `backups.configured`, `incident.runbook`): `soc2-type1-readiness`.
+3. Code or IaC present and several core signals false (`auth.sso` (workforce SSO only; CI OIDC federation is `auth.ci_oidc`), `logging.centralized`, `change_mgmt.codeowners`, `backups.configured`, `incident.runbook`): `soc2-type1-readiness`.
 4. Core signals mostly true, `report_type` is `type2`, and `ci` is empty or evidence jobs are missing: `soc2-type2-operations`. If `report_type` is `type1`, never pick type2-operations here: stay on `soc2-type1-readiness`, or `soc2-audit` if the user wants a final check.
 5. `state.completed` already contains the skill the signals suggest and the user is not asking for something new: suggest the next skill in the chain (for `report_type: type1`, the chain stops at type1-readiness) and say why. A new component or a redo request is never blocked by `completed`.
 6. Still tied: prefer the earlier phase (architect, policies, type1, type2). Audit is chosen by intent only, never by signals alone.
@@ -84,7 +84,7 @@ Reason: no code or IaC and the user is designing. With no state file, send the s
 Prompt: "We have Terraform and GitHub Actions. Is MFA enforced everywhere? Sort out what's missing for Type 1."
 Scan excerpt: `iac: ["terraform"]`, `ci: ["github-actions"]`, `auth: {"sso": false, "mfa_hint": false}`, `logging.cloud_audit_trail: false`.
 Route: `→ soc2-type1-readiness (code/IaC present, AC-02 and OPS-06 signals missing)`.
-Reason: code exists and in-scope controls are incomplete; the user asked what is missing, which is a readiness question, not an auditor view. AC-02 (MFA) and OPS-06 (cloud audit trail) are the first gaps to check against the Type 1 pass rules in the catalog.
+Reason: code exists and in-scope controls are incomplete; the user asked what is missing, which is a readiness question, not an auditor view. AC-02 (MFA) and OPS-06 (cloud audit trail) are the first gaps to check against each control's `Type 1 pass` field in the catalog.
 
 ### 3. Auditor question with a hardcoded secret
 

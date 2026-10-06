@@ -153,6 +153,23 @@ class CatalogTest(unittest.TestCase):
                             bad.append(f"{t} not on {cid} TSC line: {where}")
         self.assertEqual(bad, [], "\n".join(bad))
 
+    def test_skill_docs_use_real_signals_flags_and_fields(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "skills" / "soc2" / "scripts"))
+        import scan
+        keys = set(scan.flatten_keys(scan.empty_signals()))
+        prefixes = {k.split(".")[0] for k in keys if "." in k}
+        sig = re.compile(r"`((?:%s)\.[a-z_]+)`" % "|".join(sorted(prefixes)))
+        flag = re.compile(r"scan\.py[^`\n]*?(--[a-z-]+)")
+        src = (ROOT / "skills" / "soc2" / "scripts" / "scan.py").read_text(encoding="utf-8")
+        for md in (ROOT / "skills").rglob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            self.assertNotIn("Pass rule", text, md)
+            for k in sig.findall(text):
+                self.assertIn(k, keys, f"{md}: unknown signal {k}")
+            for f in flag.findall(text):
+                self.assertIn(f'"{f}"', src, f"{md}: unknown scan.py flag {f}")
+
     def test_cloud_equivalents_exists(self):
         text = (REF / "cloud-equivalents.md").read_text(encoding="utf-8")
         for word in ("AWS", "GCP", "Azure"):
