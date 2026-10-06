@@ -30,20 +30,30 @@ If `.soc2/state.json` does not exist, create it containing only the keys the use
 
 Ask only keys that are missing from state and the conversation, in ONE message of at most four plain-language questions, in the router's wording. If invoked through the router, the router already asked; ask nothing it covered. Do not ask one question at a time.
 
-1. Report type, explained in three lines: Type 1 is a snapshot (are the controls designed and in place on one date?); Type 2 is a movie (did the controls keep working over a period, usually 3 to 12 months?); ask your customer which one they accept. Rule of thumb: first report, or a deal is waiting, take Type 1 now and Type 2 next; if the customer demands Type 2, go straight to it. (Skip if `report_type` is known.)
+1. Report type, explained in three lines: Type 1 is a snapshot (are the controls designed and in place on one date?); Type 2 is a movie (did the controls keep working over a period, usually 3 to 12 months?); ask your customer which one they accept. Rule of thumb: first report, or a deal is waiting, take Type 1 now and Type 2 next; if the customer demands Type 2, go straight to it. Deadline arithmetic: a Type 2 window should be at least 3 months and starts only after the controls are live. If the customer deadline minus the time to build the controls leaves less than 3 months, recommend a Type 1 now plus a Type 2 window afterwards (`next_report`: `type2 after type1`), and state the actual dates. (Skip the explanation if `report_type` is known; if it is absent when you need it, ask just that one question with two options, accept a plain-English answer, and echo it back.)
 2. Date: the Type 1 as-of date, or the Type 2 window start and end. Ask for the as-of date only when `report_type` is `type1` or the user asks for a Type 1 report.
 3. Cloud(s): AWS, GCP, Azure, other, or none yet (several may apply).
-4. Company name, who owns the project, and team size (workforce).
+4. System or product name, company name, who owns the project, and team size (workforce).
 
 TSC scope (inside question 1's message, not a fifth question): Security is the default and always in scope, plus one line each for Availability (uptime and recovery promises), Processing Integrity (data processed completely and accurately, such as invoices and payments), Confidentiality (protecting data marked confidential), Privacy (personal information handled per your notice). Accept or narrow it. Then infer, do not interrogate: system type, tenancy, tools and data classes come from what the user already described or from the repo. If a data class is unclear and it changes controls (PHI, cardholder data, government IDs), ask it inside the same message as a fifth clause of question 4 only when necessary.
+
+### Payments (when the user says payments, billing, invoices or payouts)
+
+"Payments" is ambiguous, so add one clause to question 4's message: is the money coming in (customers pay you: billing, invoices, subscriptions), going out (payroll, vendor or customer payouts), or both? And do card or bank account numbers ever reach your code or database, or only a provider's hosted page or API?
+
+- Money in, card data: use a provider-hosted payment page or fields, so the card number never touches your servers. That keeps you at PCI DSS SAQ A, the smallest scope; handling card numbers yourself means SAQ D and a far larger scope. Keep only the provider's token and last-4. PCI DSS applies separately from SOC 2.
+- Money out (payouts, payroll): bank account and routing numbers are sensitive; prefer the provider's tokenized payout API (the provider holds the account number) over storing them. US ACH payouts also fall under NACHA rules and your bank's or processor's requirements (authorization records, return handling); confirm with them, SOC 2 does not cover this.
+- Either direction: flag Processing Integrity (PI-01 to PI-07, with idempotency `PI-06 → PI1.3` and reconciliation to the cent) in the scope-gap check below, and record the money direction and the card or bank data path in the data minimisation ADR.
 
 If PHI or cardholder data is in play, state that HIPAA or PCI DSS applies separately and SOC 2 does not replace them.
 
 Save each confirmed answer to `.soc2/state.json` as soon as it is given, and never write a value the user did not give or accept.
 
-### Scope-gap flag (once)
+### Scope-gap flag (once, plus one standing flag)
 
-After the data classes are known, compare them with the chosen TSC scope and flag each mismatch once, with a reason to confirm: personal information or sensitive PII with Privacy excluded (customers and enterprise security questionnaires commonly ask about it; PR controls would not be examined); customer-supplied confidential data with Confidentiality excluded; a data or financial pipeline with Processing Integrity excluded; uptime commitments in contracts with Availability excluded. The user may keep the exclusion; record it under `Excluded` as "scope choice, data suggests <category>" so the audit and policy skills do not re-raise it.
+Standing backup flag: whenever a database or other persistent store exists and Availability is out of scope (for example a Security-only report), always flag that backups, restore testing and recovery would not be examined as AV controls. Cite the gap as `RSK-05 → CC9.1` (business continuity, in scope through Security) and say that `AV-03` and `AV-04` apply if Availability is added. Do not remap the catalog; still design the backup and a restore test, and if the user declines, record it as excluded (scope choice).
+
+After the data classes are known, compare them with the chosen TSC scope and flag each mismatch once, with a reason to confirm: personal information or sensitive PII with Privacy excluded (customers and enterprise security questionnaires commonly ask about it; PR controls would not be examined); customer-supplied confidential data with Confidentiality excluded; a data or financial pipeline with Processing Integrity excluded; uptime commitments in contracts with Availability excluded. The user may keep the exclusion; record it as "scope choice, data suggests <category>" in the architecture's Excluded section and in `.soc2/state.json` `excluded` (see Update state) so the audit and policy skills do not re-raise it.
 
 ## Step 2: Procedure
 
@@ -77,7 +87,7 @@ Write these files in the user's repo (create directories as needed):
    - Open gaps and assumptions.
    - ADR index linking each `docs/soc2/adr/NNNN-<slug>.md`.
 2. `docs/soc2/adr/NNNN-<slug>.md`, one per significant decision, numbered from the next free number.
-3. `.soc2/state.json` updated per below.
+3. `.soc2/state.json` updated per below. ADR numbers are four-digit strings ("0003"), never paths.
 
 ### Implementation spec (developer deliverable)
 
@@ -85,7 +95,7 @@ For each component that carries code or IaC, write concrete items a developer ca
 
 - Modules: named modules or files with one-line responsibility (for example `intake/validate`, `pipeline/idempotency`, `pipeline/reconcile`, `delivery/signed_output`, `audit/log_event`, `infra/logging`, `infra/backup`).
 - Interfaces and data contracts: schema for each input and output, rejection reasons, idempotency key definition, error classes (PI-02 → PI1.2, PI-06 → PI1.3).
-- Acceptance tests per control, each pass/fail and runnable in CI: for example invalid or oversized input is rejected and logged with a reason; replaying the same file or message twice produces one result (PI-06 → PI1.3); row counts and control totals in equal output (PI-03 → PI1.3); money rounding follows one documented rule and totals reconcile to the cent (PI-02 → PI1.2); a run that misses its SLA raises an alert (PI-07 → PI1.4); output is delivered only to the authorised recipient through an expiring link (PI-04 → PI1.4); cross-tenant read returns 403 (AC-06); no secrets in the repo and no secrets in local settings files (AC-17 → CC6.1); unauthenticated request to a data endpoint fails.
+- Acceptance tests per control, each pass/fail and runnable in CI: for example invalid or oversized input is rejected and logged with a reason; replaying the same file or message twice produces one result and the second attempt is logged as `duplicate_ignored` (PI-06 → PI1.3; on Azure this is the Cosmos create-if-not-exists test, not a Service Bus test); row counts and control totals in equal output (PI-03 → PI1.3); money rounding follows one documented rule and totals reconcile to the cent (PI-02 → PI1.2); a run that misses its SLA raises an alert (PI-07 → PI1.4); output is delivered only to the authorised recipient through an expiring link (PI-04 → PI1.4); cross-tenant read returns 403 (AC-06); no secrets in the repo and no secrets in local settings files (AC-17 → CC6.1); unauthenticated request to a data endpoint fails.
 - IaC and CI: resources to define (log sinks/diagnostic settings with retention, backup plan, alert rules, KMS or Key Vault keys, branch protection or rulesets as code, required status checks, Trivy config or Checkov on the IaC, dependency and secret scanning), with naming that cannot collide with existing resources. Include the evidence query or export for each (for example a KQL or CLI query that lists rejected records per day).
 - Order of work: map the Top 10 onto this spec as a first sprint.
 
@@ -107,7 +117,8 @@ Edit `.soc2/state.json` (keep unrelated keys untouched):
 
 - `system`: set `name`, `company`, `owner`, `cloud` (array: `aws`, `gcp`, `azure`, `other`), `type`, `tenancy`, `workforce`, `tools`, `data_classes` (arrays where the router schema uses arrays), only for values answered or inferred and confirmed.
 - `tsc_scope`, `report_type`, `audit_period`, `type1_report_date` (only when `report_type` is `type1` or the user asked for a Type 1 report) only when answered or explicitly accepted; leave skipped keys absent. If the user wants Type 1 now and Type 2 later, set `next_report` to `type2 after type1`.
-- `decisions`: append `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "<NNNN>"}` per control satisfied by each ADR.
+- `decisions`: append `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "<NNNN>"}` per control satisfied by each ADR; `adr` is the 4-digit number string, for example "0003" (not a path, not "3").
+- `excluded`: append `{"control": "<ID>", "reason": "<specific reason>", "date": "<YYYY-MM-DD>"}` for every control listed under Excluded (unmapped-control diff, scope exclusions, small-team exclusions); skip an ID already present. Later skills show these as n/a with the stored reason and never re-list them.
 - `completed`: add `"soc2-architect"` if not present.
 
 Valid `tsc_scope` values: `security`, `availability`, `processing_integrity`, `confidentiality`, `privacy`. `report_type` is `type1` or `type2`.
