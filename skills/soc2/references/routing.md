@@ -56,7 +56,23 @@ Use these only when intent is ambiguous or absent. Evaluate them in order; the f
 Check `audit_period` against today before routing a Type 2 request.
 
 - `audit_period.start` is in the future: pre-period readiness. Report the date each control's evidence must be live by. No sampling simulation.
-- The window has started or ended and most controls fail: say so plainly (the gaps cannot be backfilled), and offer a later window or a Type 1 first.
+- Start or end is before today: ask one line, "Keep this window, move it, or do a Type 1 first?", and record `audit_period_decision` (`keep`, `moved`, `type1-first`). If most controls fail, say so plainly (the gaps cannot be backfilled) and offer a later window or a Type 1 first.
+
+## Deadline arithmetic
+
+A Type 2 window needs at least 3 months and should start after the controls are live. When the user gives a customer deadline:
+
+1. Estimate build time to "controls live" (use the scan and the number of missing controls).
+2. Available months = deadline minus build time. If that is under 3, recommend Type 1 now and the Type 2 window after it, and set `next_report: "type2 after type1"`.
+3. State the dates: controls live by X, Type 1 as-of Y (about 4 to 6 weeks after controls are live, with a CPA firm engaged), earliest Type 2 window start Z, earliest Type 2 window end Z + 3 months. Never promise a report date; the CPA firm sets it.
+
+## Precedence and confirmation
+
+`state.system.cloud` overrides `scan.cloud`; the scan only suggests. A scope or value the user states in their own words is confirmed (write it and echo it back). A repo-inferred value is a suggestion confirmed in one clause. If `report_type` is absent when a phase needs it, ask only that question.
+
+## Policies already done
+
+If `soc2-policies` is in `completed` and the user says "write our policies", do not silently enter Review mode. Say where the policies are, then offer: regenerate, review against the templates, or approve (set approver and date). In a chain, the policies questions run as their own turn before the next step starts.
 
 ## Chain definitions
 
@@ -68,7 +84,15 @@ Check `audit_period` against today before routing a Type 2 request.
 | "audit us, then fix it" | audit → type1-readiness (or type2-operations when `report_type` is `type2` and controls are designed) |
 | "policies and a gap check" | policies → audit |
 
-Each step reads the previous step's output files and `.soc2/state.json`. Skip skills in `state.completed` unless asked to redo them, and print what was skipped and why. At the end of the chain, list what was not produced (policies, IaC, CI evidence jobs) and offer to scaffold it.
+Each step reads the previous step's output files and `.soc2/state.json`. Skip skills in `state.completed` unless asked to redo them, and print what was skipped and why. At the end of the chain, list what was not produced and offer to scaffold it.
+
+### "Not run" template
+
+Print this literally, one line per skipped phase, filling the angle brackets:
+
+`Not run: <skill> (<reason, e.g. report_type=type1>). Say "scaffold" and I will write <what, e.g. the evidence jobs and IaC for the Type 2 period>.`
+
+Example: `Not run: soc2-type2-operations (report_type=type1). Say "scaffold" and I will write the CI evidence jobs and IaC you would need for a later Type 2 window.`
 
 ## Worked examples
 
@@ -77,7 +101,7 @@ Each step reads the previous step's output files and `.soc2/state.json`. Skip sk
 Prompt: "We're starting a new B2B SaaS on AWS and want to design it so SOC 2 is easy later."
 Scan excerpt: `iac: []`, `ci: []`, `cloud: []`, `policies: []`.
 Route: `→ soc2-architect (empty repo, design intent)`.
-Reason: no code or IaC and the user is designing. With no state file, send the single first-run message (report type, date, cloud, company/owner/team size); do not ask for `audit_period` unless Type 2 was chosen.
+Reason: no code or IaC and the user is designing. With no state file, offer once to design it SOC 2-ready (one line). On yes, send the first-run message (report type, cloud, names and size); ask the date in the next turn, and `audit_period` only if Type 2 was chosen.
 
 ### 2. Existing code, MFA question
 
@@ -110,4 +134,9 @@ Reason: plan, roadmap and "2 week plan" asks produce a ranked remediation plan, 
 Prompt: "A customer asked for our SOC 2 report. We process invoices in a data pipeline."
 Scan excerpt: no `.soc2/state.json`.
 Route: send the one first-run message, then `→ soc2-architect` or `→ soc2-type1-readiness` by scan signals.
-Reason: the user needs the Type 1 vs Type 2 explanation first; "ask your customer which they accept" is part of that message.
+Reason: the user needs the Type 1 vs Type 2 explanation first (date comes in the next turn); "ask your customer which they accept" is part of that message.
+
+### 7. Unprompted design, no SOC 2 mention
+
+Prompt: "Help me design a Stripe billing pipeline." No state file.
+Reply with one line: "Want me to design this SOC 2-ready? (yes/no)". On no, write `soc2_offer: "declined"` and never offer again. If the scan shows hardcoded secrets, still mention them (AC-17 → CC6.1).
