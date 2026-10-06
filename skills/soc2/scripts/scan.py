@@ -1,9 +1,16 @@
 """SOC 2 repo signal scanner. Stdlib only. Emits facts, never verdicts.
 
-Usage: python scan.py <repo> [--write] [--if-stale] [--secrets]
+Usage: python scan.py <repo> [--write] [--if-stale] [--secrets] [--scope KEYS]
 
---secrets prints only `path:line` for each suspected hardcoded secret plus a
-total count. It never prints matched text.
+--secrets prints `path:line kind` for each suspected hardcoded secret plus a
+total count. kind is one of aws-key-id, private-key, url-credential,
+db-password, azure-key, gcp-sa-key, token, generic-secret. It never prints
+matched text.
+--scope takes a comma list of tsc_scope keys (security, availability,
+processing_integrity, confidentiality, privacy) and prints the in-scope
+control IDs from references/control-index.md, one per line. Security is
+always in scope; a control is in scope when any TSC it cites is in an
+in-scope series.
 
 Notes on semantics (all signals are hints, not verdicts):
 - Markdown files are not scanned for control signals or secrets (documents
@@ -21,7 +28,7 @@ import sys
 from pathlib import Path
 
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist",
-             "build", ".soc2", ".terraform", "vendor", "target"}
+             "build", ".soc2", ".terraform", "vendor", "target", "_backup"}
 MAX_BYTES = 1_000_000
 # .md is deliberately absent: docs are filename-checked only.
 TEXT_EXT = {".tf", ".hcl", ".yml", ".yaml", ".json", ".py", ".js", ".ts", ".go",
@@ -66,14 +73,14 @@ PATTERNS = {
     "kms": r"aws_kms_key|google_kms|azurerm_key_vault|kms_key_id|AWS::KMS::Key|Microsoft\.KeyVault/",
     # no bare https:// URLs: they say nothing about TLS configuration
     "tls": (r"\btls\b|aws_acm_certificate|ssl_policy|cert-manager|min_tls_version|minimum_tls_version"
-            r"|minimumTlsVersion|tls_policy|ELBSecurityPolicy|google_compute_ssl_policy"
+            r"|minimumTlsVersion|minimalTlsVersion|minimal_tls_version|tls_policy|ELBSecurityPolicy|google_compute_ssl_policy"
             r"|redirect_http_to_https|\bhsts\b|AWS::CertificateManager"),
     "at_rest": r"storage_encrypted\s*=\s*true|server_side_encryption|encrypted\s*=\s*true",
     "cloud_audit_trail": (r"aws_cloudtrail|AWS::CloudTrail::Trail|cloudtrail\.Trail"
                           r"|google_logging_(?:project|folder|organization|billing_account)_sink"
                           r"|google_project_iam_audit_config"
-                          r"|azurerm_monitor_(?:diagnostic_setting|aad_diagnostic_setting|log_profile)"
-                          r"|Microsoft\.Insights/diagnosticSettings|gcloud\s+logging\s+sinks"),
+                          r"|azurerm_monitor_log_profile|gcloud\s+logging\s+sinks"
+                          r"|az\s+monitor\s+log-profiles"),
     # a real shipper / agent / sink config, not a bare log group or an API-key string
     "central_log": (r"fluentd|fluent[-_ ]?bit|filebeat|logstash|promtail|otel[-_ ]?collector"
                     r"|opentelemetry[-_ ]collector|elastic[-_ ]agent|grafana[-_ ]agent|grafana/alloy"
@@ -82,8 +89,10 @@ PATTERNS = {
                     r"|splunk/universalforwarder|aws_cloudwatch_log_subscription_filter"
                     r"|aws_cloudwatch_log_destination|aws_kinesis_firehose_delivery_stream"
                     r"|google_logging_(?:project|folder|organization|billing_account)_sink"
-                    r"|azurerm_log_analytics_workspace|azurerm_monitor_diagnostic_setting"
-                    r"|Microsoft\.OperationalInsights/|newrelic-infra|\bnri-"),
+                    r"|azurerm_monitor_(?:diagnostic_setting|data_collection_rule\w*)"
+                    r"|Microsoft\.Insights/(?:diagnosticSettings|dataCollectionRules)"
+                    r"|az\s+monitor\s+diagnostic-settings\s+(?:subscription\s+)?create"
+                    r"|AzureMonitor(?:Linux|Windows)Agent|newrelic-infra|\bnri-"),
     "alerts": (r"aws_cloudwatch_metric_alarm|AWS::CloudWatch::Alarm|alertmanager|prometheusrule"
                r"|pagerduty|opsgenie|jira_service_management|incident\.io|grafana[-_ ]oncall"
                r"|google_monitoring_alert_policy"
@@ -95,7 +104,8 @@ PATTERNS = {
                 r"|snapshot_schedule_policy|azurerm_backup_policy\w*"
                 r"|azurerm_recovery_services_vault|azurerm_data_protection_backup\w*"
                 r"|Microsoft\.RecoveryServices|Microsoft\.DataProtection|AWS::Backup::"
-                r"|BackupRetentionPeriod"),
+                r"|BackupRetentionPeriod|backupPolicy[\s\S]{0,200}?Continuous"
+                r"|\btype\s*[=:]\s*['\"]Continuous(?:7Days|30Days)?['\"]"),
     "restore_test": r"restore[-_ ]test",
     "branch_prot": (r"github_(?:branch_protection(?:_v3)?|repository_ruleset|organization_ruleset)"
                     r"|branch_protection_rules?|\"enforcement\"\s*:\s*\"active\""),
@@ -106,26 +116,36 @@ PATTERNS = {
     "dsar": r"\bdsar\b|data[-_ ]subject|right[-_ ]to[-_ ](erasure|access)",
 }
 PATTERNS = {k: re.compile(v, re.I | re.M) for k, v in PATTERNS.items()}
+# Azure diagnostic setting is audit-trail evidence only for the Activity Log
+# (subscription scope, Administrative category); a resource-level one is not.
+AZURE_DIAG = re.compile(r"azurerm_monitor_diagnostic_setting|azurerm_monitor_aad_diagnostic_setting"
+                        r"|Microsoft\.Insights/diagnosticSettings|az\s+monitor\s+diagnostic-settings", re.I)
+AZURE_ADMIN = re.compile(r"\bAdministrative\b")
 RETENTION = re.compile(r'(?:retention_in_days|retentionInDays|retention_days)"?\s*[=:]\s*(\d+)')
 RENOVATE_PKG = re.compile(r'"renovate"\s*:')
 HOST_JSON = re.compile(r'"version"\s*:')
 APP_YAML = re.compile(r"^\s*runtime\s*:", re.M)
 
 # --- secrets -------------------------------------------------------------
-_KEYWORD = (r"(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key"
-            r"|auth[_-]?token|client[_-]?secret)")
-SECRET_RXS = [
-    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
-    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|xox[bapors]-[A-Za-z0-9-]{10,}"
-               r"|sk_live_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_\-]{35}"),
-    re.compile(r"AccountKey=[^;\s\"']{10,}"),
-    re.compile(r"SharedAccessSignature=[^;\s\"']{10,}"),
-    re.compile(r"[?&;]sig=[A-Za-z0-9%+/=]{20,}"),
+SECRET_KINDS = {"aws-key-id", "private-key", "url-credential", "db-password", "azure-key",
+                "gcp-sa-key", "token", "generic-secret"}
+# (kind, regex); the first matching rule on a line decides the kind
+SECRET_RULES = [
+    ("gcp-sa-key", re.compile(r"[\"']private_key[\"']?\s*[:=]\s*[\"']?-----BEGIN")),
+    ("aws-key-id", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+    ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----")),
+    ("token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|xox[bapors]-[A-Za-z0-9-]{10,}"
+                         r"|sk_live_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_\-]{35}")),
+    ("azure-key", re.compile(r"AccountKey=[^;\s\"']{10,}|SharedAccessKey=[^;\s\"']{10,}"
+                             r"|SharedAccessSignature=[^;\s\"']{10,}|[?&;]sig=[A-Za-z0-9%+/=]{20,}")),
     # scheme://user:password@host (env refs like ${X} / <x> / {{x}} are excluded)
-    re.compile(r"\b[a-z][a-z0-9+.\-]*://[^\s:/@\"'<>{}$]+:[^\s@/\"'<>{}$]+@", re.I),
+    ("url-credential", re.compile(r"\b[a-z][a-z0-9+.\-]*://[^\s:/@\"'<>{}$]+:[^\s@/\"'<>{}$]+@", re.I)),
+    # connection-string style Password=... / Pwd=...
+    ("db-password", re.compile(r"(?<![A-Za-z0-9_])(?:Password|Pwd)=(?![\s$<{%;])[^;\s\"']{4,}", re.I)),
     # password = "literal" / "secret": "literal" (non-empty, not an env or template ref)
-    re.compile(_KEYWORD + r"""["']?\s*[:=]\s*(["'])(?![\s$<{%])[^"'\s]+\1""", re.I),
+    ("db-password", re.compile(r"(?:password|passwd|pwd)[\"']?\s*[:=]\s*([\"'])(?![\s$<{%])[^\"'\s]+\1", re.I)),
+    ("generic-secret", re.compile(r"(?:secret|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?token"
+                                  r"|client[_-]?secret)[\"']?\s*[:=]\s*([\"'])(?![\s$<{%])[^\"'\s]+\1", re.I)),
 ]
 ENV_SECRET_RX = re.compile(
     r"^\s*(?:export\s+)?[A-Za-z0-9_]*(?:PASSWORD|SECRET|API_KEY|ACCESS_KEY|TOKEN|PRIVATE_KEY)"
@@ -133,24 +153,72 @@ ENV_SECRET_RX = re.compile(
 PLACEHOLDER_VALUE = re.compile(r"EXAMPLE|YOUR[_-]|^[x*]{3,}$|REPLACE[_-]?ME|PLACEHOLDER", re.I)
 TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 
+# name-based rule for settings files: NAME matches KEY|SECRET|TOKEN|PASSWORD|PWD|CONNECTION
+NAME_WORDS = re.compile(r"KEY|SECRET|TOKEN|PASSWORD|PWD|CONNECTION", re.I)
+_JSON_PAIR = re.compile(r"[\"']([A-Za-z0-9_.:\-]+)[\"']\s*:\s*[\"']([^\"']*)[\"']")
+_ENV_PAIR = re.compile(r"^\s*(?:export\s+)?([A-Za-z0-9_.\-]+)\s*=\s*[\"']?([^\"'\r\n]*?)[\"']?\s*$")
+_KEYISH = re.compile(r"[A-Za-z0-9+/=_\-]{20,}")
+_CONN_CRED = re.compile(r"(?:Key|Password|Pwd|Secret|Sig)\w*=[^;\s]{8,}", re.I)
+_NAME_EXCLUDE = re.compile(r"UseDevelopmentStorage=true|@Microsoft\.KeyVault\(|%[^%\s]+%|\$\{[^}]*\}"
+                           r"|\{\{|<[^>]*>", re.I)
 
-def secret_lines(text, is_env=False):
-    """Return 1-based line numbers holding a suspected secret. Never returns text."""
+
+def _name_kind(name):
+    n = name.upper()
+    if re.search(r"COSMOS|STORAGE|SERVICEBUS|EVENTHUB|SHAREDACCESS|ACCOUNT|CONNECTION", n):
+        return "azure-key"
+    if re.search(r"PASSWORD|PWD", n):
+        return "db-password"
+    if "TOKEN" in n:
+        return "token"
+    return "generic-secret"
+
+
+def is_settings_file(name):
+    n = name.lower()
+    return (n == "local.settings.json" or (n.startswith("appsettings") and n.endswith(".json"))
+            or n.startswith(".env") or n.endswith(".env"))
+
+
+def _name_rule(line):
+    pairs = _JSON_PAIR.findall(line)
+    m = _ENV_PAIR.match(line)
+    if m:
+        pairs.append((m.group(1), m.group(2)))
+    for name, value in pairs:
+        if not NAME_WORDS.search(name) or _NAME_EXCLUDE.search(value) or PLACEHOLDER_VALUE.search(value):
+            continue
+        if "CONNECTION" in name.upper():
+            if _CONN_CRED.search(value):
+                return _name_kind(name)
+        elif _KEYISH.fullmatch(value) and (re.search(r"\d", value) or (value.lower() != value and value.upper() != value)):
+            return _name_kind(name)
+    return None
+
+
+def secret_hits(text, is_env=False, settings=False):
+    """Return [(1-based line, kind)] for suspected secrets. Never returns text."""
     out = []
     for i, line in enumerate(text.splitlines(), 1):
         if len(line) > 20000:
             line = line[:20000]
-        rxs = SECRET_RXS + ([ENV_SECRET_RX] if is_env else [])
-        for rx in rxs:
-            hit = False
-            for m in rx.finditer(line):
-                if not PLACEHOLDER_VALUE.search(m.group(0)):
-                    hit = True
-                    break
-            if hit:
-                out.append(i)
+        kind = None
+        for k, rx in SECRET_RULES:
+            if any(not PLACEHOLDER_VALUE.search(m.group(0)) for m in rx.finditer(line)):
+                kind = k
                 break
+        if kind is None and is_env and any(not PLACEHOLDER_VALUE.search(m.group(0))
+                                           for m in ENV_SECRET_RX.finditer(line)):
+            kind = "generic-secret"
+        if kind is None and (settings or is_env):
+            kind = _name_rule(line)
+        if kind:
+            out.append((i, kind))
     return out
+
+
+def secret_lines(text, is_env=False, settings=False):
+    return [ln for ln, _ in secret_hits(text, is_env, settings)]
 
 
 # --- unresolved template placeholders (runbook skeletons) -----------------
@@ -226,6 +294,15 @@ def _is_text_candidate(p, rel):
     return p.suffix.lower() in TEXT_EXT
 
 
+def _is_runbook_path(rel, name):
+    """Runbook/playbook/IR-plan files only, never policies (a policy is not a runbook)."""
+    parts = rel.split("/")
+    if "policies" in parts[:-1]:
+        return False
+    return ("runbook" in name or "playbook" in name or name.startswith("incident-response-plan")
+            or "runbooks" in parts[:-1])
+
+
 def _is_ci_file(rel):
     return (rel.startswith((".github/workflows/", ".circleci/", ".buildkite/"))
             or rel in (".gitlab-ci.yml", "azure-pipelines.yml", "bitbucket-pipelines.yml",
@@ -240,7 +317,7 @@ def _read(p):
 
 
 def scan_secrets(root):
-    """List of (relative posix path, line) for suspected hardcoded secrets."""
+    """List of (relative posix path, line, kind) for suspected hardcoded secrets."""
     root = Path(root)
     out = []
     for p in _files(root):
@@ -252,8 +329,9 @@ def scan_secrets(root):
         text = _read(p)
         if text is None:
             continue
-        for ln in secret_lines(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env"):
-            out.append((rel, ln))
+        for ln, kind in secret_hits(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env",
+                                    settings=is_settings_file(name)):
+            out.append((rel, ln, kind))
     return sorted(out)
 
 
@@ -304,7 +382,7 @@ def scan(root):
             s["privacy"]["privacy_notice"] = True
         if name.startswith(("vendors", "subprocessors")):
             s["vendors"]["list_present"] = True
-        if "incident" in rel and ("runbook" in rel or "response" in rel):
+        if _is_runbook_path(rel, name):
             body = _read(p)
             if body is None or not has_placeholders(body):
                 s["incident"]["runbook"] = True
@@ -319,6 +397,8 @@ def scan(root):
                 continue
             if rx.search(text):
                 hits.add(k)
+        if "cloud_audit_trail" not in hits and AZURE_DIAG.search(text) and AZURE_ADMIN.search(text):
+            hits.add("cloud_audit_trail")
         if name == "host.json" and HOST_JSON.search(text):
             hits.add("azure")
         if name == "app.yaml" and APP_YAML.search(text):
@@ -330,7 +410,8 @@ def scan(root):
                 _add(s["auth"]["idp"], idp)
         if not name.endswith(TEMPLATE_SUFFIXES):
             s["secrets"]["hardcoded_hits"] += len(
-                secret_lines(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env"))
+                secret_lines(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env",
+                             settings=is_settings_file(name)))
         retentions.extend(int(m) for m in RETENTION.findall(text))
     for cloud in ("aws", "gcp", "azure"):
         if cloud in hits:
@@ -364,6 +445,26 @@ def scan(root):
     return s
 
 
+SCOPE_KEYS = {"security": "CC", "availability": "A", "processing_integrity": "PI",
+              "confidentiality": "C", "privacy": "P"}
+_SERIES = re.compile(r"^(CC|PI|A|C|P)\d")
+
+
+def scope_ids(keys):
+    """Control IDs in scope for the given tsc_scope keys (security always in scope)."""
+    want = {"CC"} | {SCOPE_KEYS[k] for k in keys}
+    index = Path(__file__).resolve().parent.parent / "references" / "control-index.md"
+    ids = []
+    for line in index.read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or not re.fullmatch(r"[A-Z]+-\d+", cells[0]):
+            continue
+        series = {m.group(1) for c in cells[2].split(",") if (m := _SERIES.match(c.strip()))}
+        if series & want:
+            ids.append(cells[0])
+    return ids
+
+
 def _stale(root, cache):
     if not cache.exists():
         return True
@@ -384,20 +485,34 @@ def main(argv=None):
         except (AttributeError, ValueError):
             pass
     ap = argparse.ArgumentParser(description="SOC 2 repo signal scanner")
-    ap.add_argument("path")
+    ap.add_argument("path", nargs="?")
     ap.add_argument("--write", action="store_true", help="save to <path>/.soc2/scan.json")
     ap.add_argument("--if-stale", action="store_true", help="reuse cache unless files changed")
     ap.add_argument("--secrets", action="store_true",
                     help="print only path:line of suspected secrets and a total; never the text")
+    ap.add_argument("--scope", metavar="KEYS",
+                    help="comma list of tsc_scope keys; print in-scope control IDs, one per line")
     a = ap.parse_args(argv)
+    if a.scope is not None:
+        keys = [k.strip().lower() for k in a.scope.split(",") if k.strip()]
+        bad = [k for k in keys if k not in SCOPE_KEYS]
+        if bad:
+            print(f"error: unknown scope key(s): {', '.join(bad)} "
+                  f"(valid: {', '.join(SCOPE_KEYS)})", file=sys.stderr)
+            return 2
+        for cid in scope_ids(keys):
+            print(cid)
+        return 0
+    if a.path is None:
+        ap.error("path is required unless --scope is given")
     root = Path(a.path)
     if not root.is_dir():
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
     if a.secrets:
         found = scan_secrets(root)
-        for rel, ln in found:
-            print(f"{rel}:{ln}")
+        for rel, ln, kind in found:
+            print(f"{rel}:{ln} {kind}")
         print(f"total: {len(found)}")
         return 0
     cache = root / ".soc2" / "scan.json"

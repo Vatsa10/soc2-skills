@@ -646,14 +646,14 @@ Sample sizes below are common auditor practice, not AICPA mandates; each CPA fir
 ### AC-17 — Secrets management and no hardcoded credentials
 - TSC: CC6.1 | Category: Security
 - Applies when: applications use API keys, database passwords, tokens, or certificates
-- Implement: secrets stored in a manager (AWS Secrets Manager/Vault/Doppler); secret scanning (GitHub secret scanning/gitleaks/trufflehog) in CI and push protection; leaked secrets rotated immediately; service-account keys inventoried and rotated
+- Implement: secrets stored in a manager (AWS Secrets Manager/Vault/Doppler); secret scanning (GitHub secret scanning/gitleaks/trufflehog) in CI and push protection; leaked secrets rotated immediately; service-account keys inventoried and rotated; verify with `git ls-files` that no secret-bearing file is tracked and with `.gitignore` / `git check-ignore -v <file>` that local settings files (`local.settings.json`, `.env*`, `appsettings.*.json`) are ignored; search history for a leaked key and purge it
 - Scan signals: secrets.scanning, secrets.hardcoded_hits, auth.ci_oidc
 - Frequency: Continuous/automated
 - Owner: Engineering lead
 - Type 1 test: secret manager in use, scanning enabled, and no live secrets in the repository on the report date
 - Type 2 test: inspect secret-scanning alerts in the period; confirm each was rotated and closed
 - Evidence: secret manager inventory, scanning configuration, alert history with rotation tickets
-- Type 1 pass: PASS if a secret manager is in use AND secret scanning runs on every push AND secrets.hardcoded_hits is 0 (or every hit is confirmed revoked) on the report date
+- Type 1 pass: PASS if a secret manager is in use AND secret scanning runs on every push AND secrets.hardcoded_hits is 0 (or every hit is revoked, confirmed by <owner> on <date> with provider evidence) on the report date
 - Type 2 pass: PASS only if every secret-scanning alert in the period was rotated and closed AND scanning stayed enabled throughout
 
 ### AC-18 — External boundary protection
