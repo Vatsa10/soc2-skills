@@ -1,6 +1,17 @@
 """SOC 2 repo signal scanner. Stdlib only. Emits facts, never verdicts.
 
-Usage: python scan.py <repo> [--write] [--if-stale]
+Usage: python scan.py <repo> [--write] [--if-stale] [--secrets]
+
+--secrets prints only `path:line` for each suspected hardcoded secret plus a
+total count. It never prints matched text.
+
+Notes on semantics (all signals are hints, not verdicts):
+- Markdown files are not scanned for control signals or secrets (documents
+  describe controls, they do not implement them); only filename checks apply.
+  Anything under docs/soc2/ is likewise skipped for text scanning.
+- auth.sso is workforce SSO evidence only; CI OIDC is reported as auth.ci_oidc
+  and an application-auth IdP alone never sets auth.sso.
+- logging.centralized needs a real shipper, agent or sink configuration.
 """
 import argparse
 import json
@@ -12,46 +23,163 @@ from pathlib import Path
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist",
              "build", ".soc2", ".terraform", "vendor", "target"}
 MAX_BYTES = 1_000_000
+# .md is deliberately absent: docs are filename-checked only.
 TEXT_EXT = {".tf", ".hcl", ".yml", ".yaml", ".json", ".py", ".js", ".ts", ".go",
-            ".java", ".rb", ".cs", ".rs", ".php", ".kt", ".md", ".toml", ".ini",
-            ".cfg", ".env", ".sh", ".txt", ".tsx", ".jsx", ""}
+            ".java", ".rb", ".cs", ".rs", ".php", ".kt", ".toml", ".ini",
+            ".cfg", ".env", ".sh", ".txt", ".tsx", ".jsx", ".bicep", ".tfvars",
+            ".jsonc", ".json5", ".properties", ".gradle", ".dockerfile",
+            ".conf", ".config", ".mjs", ".cjs", ".pem", ".key", ""}
+TEXT_SKIP_PREFIXES = ("docs/soc2/",)
 
-IDPS = ["okta", "auth0", "entra", "azuread", "keycloak", "cognito", "onelogin", "workos"]
+IDPS = ["okta", "auth0", "entra", "azuread", "keycloak", "cognito", "onelogin",
+        "workos", "jumpcloud", "clerk", "stytch", "supertokens", "zitadel",
+        "authentik", "authelia", "ping identity", "firebase auth",
+        "microsoft entra", "google workspace"]
 
-# flag-name -> regex searched over every text file
+# flag-name -> regex searched over every scanned text file
 PATTERNS = {
-    "aws": r'provider\s+"aws"|\baws_[a-z_]+\b|AWSTemplateFormatVersion',
-    "gcp": r'provider\s+"google"|\bgoogle_[a-z_]+\b',
-    "azure": r'provider\s+"azurerm"|\bazurerm_[a-z_]+\b',
+    "aws": (r'provider\s+"aws"|\baws_[a-z_]+\b|AWSTemplateFormatVersion|\bAWS::[A-Za-z0-9]+::'
+            r'|@aws-sdk/|\baws-sdk\b|aws-cdk|aws_cdk|aws-actions/|boto3'
+            r'|\baws\s+(?:s3|ec2|sts|configure|iam|ecr|eks|lambda)\b'),
+    "gcp": (r'provider\s+"google(?:-beta)?"'
+            r'|\bgoogle_(?:compute|storage|sql|project|logging|monitoring|kms|container|cloud\w*'
+            r'|bigquery|pubsub|secret_manager|service_account|folder|organization|dns'
+            r'|artifact_registry|firestore|spanner|redis|backup_dr|binary_authorization|iam'
+            r'|app_engine)\w*'
+            r'|@google-cloud/|\bgcloud\s|google-github-actions/|\bgcr\.io/|google-cloud-[a-z]+'
+            r'|cloud\.google\.com/go'),
+    "azure": (r'provider\s+"azurerm"|\bazurerm_[a-z_]+\b|@azure/|\bazure-functions\b'
+              r'|\bazure/(?:login|webapps-deploy|functions-action)'
+              r'|\baz\s+(?:login|group|deployment|webapp|functionapp|keyvault|storage)\b'
+              r'|Microsoft\.(?:Web|Storage|KeyVault|DocumentDB|Insights|RecoveryServices|Sql'
+              r'|Network|Authorization|Compute|OperationalInsights|DataProtection)/'
+              r'|AzureWebJobs|FUNCTIONS_WORKER_RUNTIME|\bazure-(?:storage|identity|cosmos|keyvault)[-\w]*'),
     "cfn": r"AWSTemplateFormatVersion",
+    "arm": r"schema\.management\.azure\.com/schemas/[^\"'\s]*deploymentTemplate\.json",
     "k8s": r"^apiVersion:.*\n(?:.*\n)*?kind:",
-    "sso": r"\b(saml|oidc|openid[-_ ]connect|sso)\b",
+    # workforce SSO only: no bare "oidc" (app auth / CI), skipped in CI files
+    "sso": (r"(?<![A-Za-z0-9])(?:saml|sso)(?![A-Za-z0-9])|aws_ssoadmin|identity[-_ ]center"
+            r"|\bscim\b|okta_app_saml|azuread_(?:saml|application)"),
+    "ci_oidc": (r"id-token:\s*write|role-to-assume|workload_identity_provider"
+                r"|token\.actions\.githubusercontent\.com|id_tokens:|azure/login"),
     "mfa": r"\b(mfa|totp|webauthn|two[-_ ]factor|2fa)\b",
-    "kms": r"aws_kms_key|google_kms|azurerm_key_vault|kms_key_id",
-    "tls": r"\btls\b|aws_acm_certificate|ssl_policy|cert-manager|https://",
+    "kms": r"aws_kms_key|google_kms|azurerm_key_vault|kms_key_id|AWS::KMS::Key|Microsoft\.KeyVault/",
+    # no bare https:// URLs: they say nothing about TLS configuration
+    "tls": (r"\btls\b|aws_acm_certificate|ssl_policy|cert-manager|min_tls_version|minimum_tls_version"
+            r"|minimumTlsVersion|tls_policy|ELBSecurityPolicy|google_compute_ssl_policy"
+            r"|redirect_http_to_https|\bhsts\b|AWS::CertificateManager"),
     "at_rest": r"storage_encrypted\s*=\s*true|server_side_encryption|encrypted\s*=\s*true",
-    "cloudtrail": r"aws_cloudtrail",
-    "central_log": r"datadog|splunk|elastic|loki|cloudwatch_log_group|opentelemetry|sentry",
-    "alerts": r"aws_cloudwatch_metric_alarm|alertmanager|pagerduty|opsgenie",
-    "backups": r"aws_backup_plan|backup_retention_period|point_in_time_recovery|velero",
+    "cloud_audit_trail": (r"aws_cloudtrail|AWS::CloudTrail::Trail|cloudtrail\.Trail"
+                          r"|google_logging_(?:project|folder|organization|billing_account)_sink"
+                          r"|google_project_iam_audit_config"
+                          r"|azurerm_monitor_(?:diagnostic_setting|aad_diagnostic_setting|log_profile)"
+                          r"|Microsoft\.Insights/diagnosticSettings|gcloud\s+logging\s+sinks"),
+    # a real shipper / agent / sink config, not a bare log group or an API-key string
+    "central_log": (r"fluentd|fluent[-_ ]?bit|filebeat|logstash|promtail|otel[-_ ]?collector"
+                    r"|opentelemetry[-_ ]collector|elastic[-_ ]agent|grafana[-_ ]agent|grafana/alloy"
+                    r"|grafana/loki|vector\.dev|vector\.toml|datadog[-_ ]agent|datadog/agent"
+                    r"|DD_LOGS_ENABLED|datadog_logs\w*|splunk[-_](?:otel|forwarder|connect|hec)"
+                    r"|splunk/universalforwarder|aws_cloudwatch_log_subscription_filter"
+                    r"|aws_cloudwatch_log_destination|aws_kinesis_firehose_delivery_stream"
+                    r"|google_logging_(?:project|folder|organization|billing_account)_sink"
+                    r"|azurerm_log_analytics_workspace|azurerm_monitor_diagnostic_setting"
+                    r"|Microsoft\.OperationalInsights/|newrelic-infra|\bnri-"),
+    "alerts": (r"aws_cloudwatch_metric_alarm|AWS::CloudWatch::Alarm|alertmanager|prometheusrule"
+               r"|pagerduty|opsgenie|jira_service_management|incident\.io|grafana[-_ ]oncall"
+               r"|google_monitoring_alert_policy"
+               r"|azurerm_monitor_(?:metric_alert|activity_log_alert|scheduled_query_rules_alert\w*)"
+               r"|Microsoft\.Insights/(?:metricAlerts|scheduledQueryRules|activityLogAlerts)"
+               r"|datadog_monitor|grafana_(?:rule_group|alert\w*)"),
+    "backups": (r"aws_backup_(?:plan|vault)|aws_dlm_lifecycle_policy|backup_retention_period"
+                r"|point_in_time_recovery|velero|backup_configuration|google_backup_dr"
+                r"|snapshot_schedule_policy|azurerm_backup_policy\w*"
+                r"|azurerm_recovery_services_vault|azurerm_data_protection_backup\w*"
+                r"|Microsoft\.RecoveryServices|Microsoft\.DataProtection|AWS::Backup::"
+                r"|BackupRetentionPeriod"),
     "restore_test": r"restore[-_ ]test",
-    "branch_prot": r"github_branch_protection|branch_protection_rules?",
+    "branch_prot": (r"github_(?:branch_protection(?:_v3)?|repository_ruleset|organization_ruleset)"
+                    r"|branch_protection_rules?|\"enforcement\"\s*:\s*\"active\""),
     "secret_scan": r"gitleaks|trufflehog|detect-secrets|secret[-_ ]scanning",
-    "sast": r"codeql|semgrep|snyk|bandit|sonar",
+    "sast": (r"codeql|semgrep|snyk|bandit|sonar|\btrivy\b|checkov|tfsec|\bkics\b|gosec|brakeman"
+             r"|njsscan|dependency-review-action|osv-scanner|\bgrype\b|\bwiz(?:cli)?\b"),
     "pii": r"\b(ssn|social_security|date_of_birth|dob|passport|phone_number)\b",
     "dsar": r"\bdsar\b|data[-_ ]subject|right[-_ ]to[-_ ](erasure|access)",
 }
 PATTERNS = {k: re.compile(v, re.I | re.M) for k, v in PATTERNS.items()}
-HARDCODED = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")
-RETENTION = re.compile(r"retention_in_days\s*=\s*(\d+)")
+RETENTION = re.compile(r'(?:retention_in_days|retentionInDays|retention_days)"?\s*[=:]\s*(\d+)')
+RENOVATE_PKG = re.compile(r'"renovate"\s*:')
+HOST_JSON = re.compile(r'"version"\s*:')
+APP_YAML = re.compile(r"^\s*runtime\s*:", re.M)
+
+# --- secrets -------------------------------------------------------------
+_KEYWORD = (r"(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key"
+            r"|auth[_-]?token|client[_-]?secret)")
+SECRET_RXS = [
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|xox[bapors]-[A-Za-z0-9-]{10,}"
+               r"|sk_live_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_\-]{35}"),
+    re.compile(r"AccountKey=[^;\s\"']{10,}"),
+    re.compile(r"SharedAccessSignature=[^;\s\"']{10,}"),
+    re.compile(r"[?&;]sig=[A-Za-z0-9%+/=]{20,}"),
+    # scheme://user:password@host (env refs like ${X} / <x> / {{x}} are excluded)
+    re.compile(r"\b[a-z][a-z0-9+.\-]*://[^\s:/@\"'<>{}$]+:[^\s@/\"'<>{}$]+@", re.I),
+    # password = "literal" / "secret": "literal" (non-empty, not an env or template ref)
+    re.compile(_KEYWORD + r"""["']?\s*[:=]\s*(["'])(?![\s$<{%])[^"'\s]+\1""", re.I),
+]
+ENV_SECRET_RX = re.compile(
+    r"^\s*(?:export\s+)?[A-Za-z0-9_]*(?:PASSWORD|SECRET|API_KEY|ACCESS_KEY|TOKEN|PRIVATE_KEY)"
+    r"\s*=\s*(?![\s$<{#\"'])\S+", re.I)
+PLACEHOLDER_VALUE = re.compile(r"EXAMPLE|YOUR[_-]|^[x*]{3,}$|REPLACE[_-]?ME|PLACEHOLDER", re.I)
+TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
+
+
+def secret_lines(text, is_env=False):
+    """Return 1-based line numbers holding a suspected secret. Never returns text."""
+    out = []
+    for i, line in enumerate(text.splitlines(), 1):
+        if len(line) > 20000:
+            line = line[:20000]
+        rxs = SECRET_RXS + ([ENV_SECRET_RX] if is_env else [])
+        for rx in rxs:
+            hit = False
+            for m in rx.finditer(line):
+                if not PLACEHOLDER_VALUE.search(m.group(0)):
+                    hit = True
+                    break
+            if hit:
+                out.append(i)
+                break
+    return out
+
+
+# --- unresolved template placeholders (runbook skeletons) -----------------
+_HTML_TAGS = {"br", "p", "b", "i", "em", "strong", "code", "pre", "ul", "ol", "li", "a", "img",
+              "div", "span", "table", "tr", "td", "th", "details", "summary", "hr", "sup", "sub",
+              "kbd", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "thead", "tbody"}
+_BRACES = re.compile(r"\{\{[^{}]*\}\}")
+_ANGLE = re.compile(r"<([^<>\n]{1,60})>")
+
+
+def has_placeholders(text):
+    if _BRACES.search(text):
+        return True
+    for m in _ANGLE.finditer(text):
+        inner = m.group(1).strip()
+        if not inner or inner[0] in "/!?" or any(c in inner for c in "=:/@"):
+            continue
+        if inner.lower() in _HTML_TAGS:
+            continue
+        return True
+    return False
 
 
 def empty_signals():
     return {
         "iac": [], "ci": [], "cloud": [],
-        "auth": {"sso": False, "mfa_hint": False, "idp": []},
+        "auth": {"sso": False, "ci_oidc": False, "mfa_hint": False, "idp": []},
         "encryption": {"kms": False, "tls": False, "at_rest_hint": False},
-        "logging": {"cloudtrail": False, "centralized": False, "retention_days": None},
+        "logging": {"cloud_audit_trail": False, "centralized": False, "retention_days": None},
         "monitoring": {"alerts": False},
         "backups": {"configured": False, "restore_test": False},
         "change_mgmt": {"codeowners": False, "pr_template": False, "branch_protection": "unknown"},
@@ -89,16 +217,61 @@ def _add(lst, item):
         lst.append(item)
 
 
+def _is_text_candidate(p, rel):
+    if rel.startswith(TEXT_SKIP_PREFIXES):
+        return False
+    name = p.name.lower()
+    if name.startswith(".env") or name == "local.settings.json":
+        return True
+    return p.suffix.lower() in TEXT_EXT
+
+
+def _is_ci_file(rel):
+    return (rel.startswith((".github/workflows/", ".circleci/", ".buildkite/"))
+            or rel in (".gitlab-ci.yml", "azure-pipelines.yml", "bitbucket-pipelines.yml",
+                       "jenkinsfile", "cloudbuild.yaml", "cloudbuild.yml"))
+
+
+def _read(p):
+    try:
+        return p.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+
+
+def scan_secrets(root):
+    """List of (relative posix path, line) for suspected hardcoded secrets."""
+    root = Path(root)
+    out = []
+    for p in _files(root):
+        rel = p.relative_to(root).as_posix()
+        low = rel.lower()
+        name = p.name.lower()
+        if not _is_text_candidate(p, low) or name.endswith(TEMPLATE_SUFFIXES):
+            continue
+        text = _read(p)
+        if text is None:
+            continue
+        for ln in secret_lines(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env"):
+            out.append((rel, ln))
+    return sorted(out)
+
+
 def scan(root):
     root = Path(root)
     s = empty_signals()
     hits = set()
+    retentions = []
     for p in _files(root):
         rel = p.relative_to(root).as_posix().lower()
         name = p.name.lower()
         # path-based signals
-        if p.suffix == ".tf":
+        if p.suffix == ".tf" or rel.endswith((".tf.json", ".tfvars")):
             _add(s["iac"], "terraform")
+        if p.suffix == ".bicep":
+            _add(s["iac"], "bicep")
+        if name == "cdk.json":
+            _add(s["iac"], "cdk")
         if name in ("pulumi.yaml", "pulumi.yml"):
             _add(s["iac"], "pulumi")
         if rel.startswith(".github/workflows/"):
@@ -107,11 +280,23 @@ def scan(root):
             _add(s["ci"], "gitlab-ci")
         if rel == ".circleci/config.yml":
             _add(s["ci"], "circleci")
+        if rel in ("azure-pipelines.yml", "azure-pipelines.yaml"):
+            _add(s["ci"], "azure-pipelines")
+        if rel == "jenkinsfile":
+            _add(s["ci"], "jenkins")
+        if rel == "bitbucket-pipelines.yml":
+            _add(s["ci"], "bitbucket-pipelines")
+        if rel.startswith(".buildkite/"):
+            _add(s["ci"], "buildkite")
+        if rel in ("cloudbuild.yaml", "cloudbuild.yml"):
+            _add(s["ci"], "cloud-build")
+            hits.add("gcp")
         if name == "codeowners":
             s["change_mgmt"]["codeowners"] = True
         if name.startswith("pull_request_template"):
             s["change_mgmt"]["pr_template"] = True
-        if rel in (".github/dependabot.yml", ".github/dependabot.yaml") or name.startswith("renovate"):
+        if (rel in (".github/dependabot.yml", ".github/dependabot.yaml")
+                or name.startswith(("renovate", ".renovaterc"))):
             s["deps"]["dependabot_or_renovate"] = True
         if "/policies/" in f"/{rel}" and p.suffix == ".md":
             _add(s["policies"], p.stem.lower())
@@ -120,37 +305,53 @@ def scan(root):
         if name.startswith(("vendors", "subprocessors")):
             s["vendors"]["list_present"] = True
         if "incident" in rel and ("runbook" in rel or "response" in rel):
-            s["incident"]["runbook"] = True
-        if p.suffix.lower() not in TEXT_EXT:
+            body = _read(p)
+            if body is None or not has_placeholders(body):
+                s["incident"]["runbook"] = True
+        if not _is_text_candidate(p, rel):
             continue
-        try:
-            text = p.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+        text = _read(p)
+        if text is None:
             continue
+        is_ci = _is_ci_file(rel)
         for k, rx in PATTERNS.items():
-            if k not in hits and rx.search(text):
+            if k in hits or (k == "sso" and is_ci):
+                continue
+            if rx.search(text):
                 hits.add(k)
+        if name == "host.json" and HOST_JSON.search(text):
+            hits.add("azure")
+        if name == "app.yaml" and APP_YAML.search(text):
+            hits.add("gcp")
+        if name == "package.json" and RENOVATE_PKG.search(text):
+            s["deps"]["dependabot_or_renovate"] = True
         for idp in IDPS:
             if re.search(rf"\b{idp}\b", text, re.I):
                 _add(s["auth"]["idp"], idp)
-        s["secrets"]["hardcoded_hits"] += len(HARDCODED.findall(text))
-        for m in RETENTION.findall(text):
-            cur = s["logging"]["retention_days"] or 0
-            s["logging"]["retention_days"] = max(cur, int(m))
-    for cloud, k in (("aws", "aws"), ("gcp", "gcp"), ("azure", "azure")):
-        if k in hits:
+        if not name.endswith(TEMPLATE_SUFFIXES):
+            s["secrets"]["hardcoded_hits"] += len(
+                secret_lines(text, is_env=name.startswith(".env") or p.suffix.lower() == ".env"))
+        retentions.extend(int(m) for m in RETENTION.findall(text))
+    for cloud in ("aws", "gcp", "azure"):
+        if cloud in hits:
             _add(s["cloud"], cloud)
     if "cfn" in hits:
         _add(s["iac"], "cloudformation")
+    if "arm" in hits:
+        _add(s["iac"], "arm")
     if "k8s" in hits:
         _add(s["iac"], "k8s")
-    s["auth"]["sso"] = "sso" in hits or bool(s["auth"]["idp"])
+    s["auth"]["sso"] = "sso" in hits
+    s["auth"]["ci_oidc"] = "ci_oidc" in hits
     s["auth"]["mfa_hint"] = "mfa" in hits
     s["encryption"]["kms"] = "kms" in hits
     s["encryption"]["tls"] = "tls" in hits
     s["encryption"]["at_rest_hint"] = "at_rest" in hits
-    s["logging"]["cloudtrail"] = "cloudtrail" in hits
+    s["logging"]["cloud_audit_trail"] = "cloud_audit_trail" in hits
     s["logging"]["centralized"] = "central_log" in hits
+    # MIN across all log groups (the weakest one decides); 0 means never expire
+    finite = [r for r in retentions if r > 0]
+    s["logging"]["retention_days"] = min(finite) if finite else None
     s["monitoring"]["alerts"] = "alerts" in hits
     s["backups"]["configured"] = "backups" in hits
     s["backups"]["restore_test"] = "restore_test" in hits
@@ -177,15 +378,28 @@ def _stale(root, cache):
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser(description="SOC 2 repo signal scanner")
     ap.add_argument("path")
     ap.add_argument("--write", action="store_true", help="save to <path>/.soc2/scan.json")
     ap.add_argument("--if-stale", action="store_true", help="reuse cache unless files changed")
+    ap.add_argument("--secrets", action="store_true",
+                    help="print only path:line of suspected secrets and a total; never the text")
     a = ap.parse_args(argv)
     root = Path(a.path)
     if not root.is_dir():
         print(f"error: not a directory: {root}", file=sys.stderr)
         return 2
+    if a.secrets:
+        found = scan_secrets(root)
+        for rel, ln in found:
+            print(f"{rel}:{ln}")
+        print(f"total: {len(found)}")
+        return 0
     cache = root / ".soc2" / "scan.json"
     if a.if_stale and not _stale(root, cache):
         print(cache.read_text(encoding="utf-8"))
