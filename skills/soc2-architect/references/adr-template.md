@@ -64,4 +64,4 @@ Gaps (controls with no automated evidence): <list, or "none">
 
 - Use real catalog IDs and the TSC from the catalog entry. Do not invent IDs or mappings.
 - Fill `Evidence produced` for Type 1 projects too; it is cheap now and required once the Type 2 period starts.
-- Record each ADR in `.soc2/state.json` under `decisions` as `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "NNNN"}`, one entry per control the ADR satisfies. The `adr` value is the ADR number, so later skills can open `docs/soc2/adr/NNNN-*.md`.
+- Record each ADR in `.soc2/state.json` under `decisions` as `{"control": "<ID>", "choice": "<short choice>", "date": "<YYYY-MM-DD>", "adr": "NNNN"}`, one entry per control the ADR satisfies. The `adr` value is the 4-digit ADR number as a string (for example "0003", never a path or "3"), so later skills can open `docs/soc2/adr/NNNN-*.md`.
