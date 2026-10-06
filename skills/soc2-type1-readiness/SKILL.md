@@ -21,14 +21,15 @@ Resolve every `../soc2/...` path against the directory containing this SKILL.md,
 
 ## Procedure
 
-1. **Load state; never re-ask what is there.** Read `.soc2/state.json` and take `tsc_scope` (lowercase keys: `security`, `availability`, `processing_integrity`, `confidentiality`, `privacy`), `report_type`, `system` (name, cloud, workforce, tools), and `decisions`. If the file is missing or `tsc_scope` is empty, ask once for the TSC scope in plain words (Security is the default and is always in scope; one line each for availability, processing integrity, confidentiality, privacy) and write it back. Write only confirmed answers, per the router's First-run rule (`../soc2/SKILL.md`): never pre-fill an unconfirmed default, and leave skipped keys absent. A key present in state is never asked again; when invoked standalone ask only the missing keys.
+1. **Load state; never re-ask what is there.** Read `.soc2/state.json` and take `tsc_scope` (lowercase keys: `security`, `availability`, `processing_integrity`, `confidentiality`, `privacy`), `report_type`, `system` (name, cloud, workforce, tools), `decisions`, and `excluded` (a list of `{control, reason, date}` written by `soc2-architect`). `system.cloud` in state overrides the scanner's `cloud` guess; the scan value is only a suggestion to confirm. If the file is missing or `tsc_scope` is empty, ask once for the TSC scope in plain words (Security is the default and is always in scope; one line each for availability, processing integrity, confidentiality, privacy) and write it back. Write only confirmed answers, per the router's First-run rule (`../soc2/SKILL.md`): never pre-fill an unconfirmed default, and leave skipped keys absent. A key present in state is never asked again; when invoked standalone ask only the missing keys.
    - **Report date.** Ask for `type1_report_date` (YYYY-MM-DD) only when `report_type` is `type1` or the user asks for a Type 1 report. Guidance to give: pick an as-of date roughly 4 to 6 weeks after the controls are live and after a CPA firm is engaged, so each control has existing evidence and the firm agrees the date. Store it and reuse it.
    - **If `report_type` is `type2`** (and the user did not ask for a Type 1 report), do not ask for or write `type1_report_date`. Label the output "Implementation check as of <today's date>" instead of "Type 1 readiness", and note that `audit_period` governs the real report. If the Type 2 window has already started or ended and most controls will fail, say so plainly in the summary and offer a later window or a Type 1 report first.
-2. **Select controls from the index.** Keep every control in scope by the Scope selection rule (in `../soc2/references/control-catalog.md`): a control is in scope when any criterion on its TSC line belongs to an in-scope category by series (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy). For each, open its catalog entry (`### <ID>`) only when you evaluate it, and check `Applies when`.
+2. **Select controls from the index.** Get the in-scope list from the scanner: `python <abs>/scripts/scan.py <repo root> --scope <comma list of tsc_scope keys>` prints one in-scope control ID per line (same rule as below; Security is always included). If the flag is unavailable, apply the rule by hand. Keep every control in scope by the Scope selection rule (in `../soc2/references/control-catalog.md`): a control is in scope when any criterion on its TSC line belongs to an in-scope category by series (CC → security, A1 → availability, PI1 → processing_integrity, C1 → confidentiality, P → privacy). For each, open its catalog entry (`### <ID>`) only when you evaluate it, and check `Applies when`.
+   - **Excluded controls.** Every control listed in `state.excluded` is `n/a` with its stored reason and date ("excluded by architecture decision on <date>: <reason>"). Do not evaluate it, re-list it as a gap, or ask about it again.
    - **N/A rule.** A control is `n/a` only when its `Applies when` condition is false for this system (for example no personal information, no on-premise office, no customer-facing availability commitment). Record the control as `n/a` with a one-line reason. A control that applies but is not built is `missing`, not `n/a`.
 3. **Scan, then confirm in the code.** Run the scanner (resolve `../soc2` against the directory containing this SKILL.md; run `python <that absolute path>/scripts/scan.py <repo root> --if-stale`, use python3 if python is missing; on Windows set PYTHONIOENCODING=utf-8) and parse the JSON. For each control, read its `Scan signals`, then open the relevant code, IaC, CI config, or policy files to confirm. Signals are hints, not proof.
 4. **Choose the output branch.**
-   - **Empty or no-IaC branch.** If the scan finds no IaC, no CI configuration, and little or no application code (a new or documentation-only repo), do not write a control-by-control matrix. Write a **build-first roadmap** of about 15 controls instead (below).
+   - **Empty or no-IaC branch.** If the scan finds no IaC and no CI configuration (a new, documentation-only, or app-only repo), do not write a control-by-control matrix. Write a **build-first roadmap** of about 15 controls instead (below). When application source exists (functions, services, config files), also write a **Built so far** table for the controls those files touch (for example AC-17 for settings files, PI-02 for input handlers, PI-06 for writers, OPS-05 for logging calls), each with a status and `file:line` defects.
    - **Otherwise** write the full result below.
 5. **Assign a status** by evaluating the control's `Type 1 test` and `Type 1 pass`: the design is adequate AND the control is implemented, shown by one instance as of the report date (or today for an implementation check). Ignore sampling language and the `Type 2 test` and `Type 2 pass` fields, which cover operation over a period. Vocabulary:
    - `designed`: the Type 1 pass holds at single-instance scope and you saw the supporting file, config, or document.
@@ -45,7 +46,7 @@ Resolve every `../soc2/...` path against the directory containing this SKILL.md,
 - Never mark a control `designed` from a scan signal alone. If a signal is present but you have not confirmed it in code or config, read the code first. If the control can live in the repo and the signal is confirmed only in part, mark `partial`; if the control lives outside the repo, mark `needs-evidence`; if there is no signal and no implementation, mark `missing`.
 - Use only the catalog's `Type 1 test` and `Type 1 pass`. Do not invent criteria or soften a rule.
 - Cite `file:line` where you can; otherwise name the signal key and the file you read.
-- Count each control once. The **primary criterion** is the first criterion on its TSC line; its series decides the category row (CC → Security, A1 → Availability, PI1 → Processing integrity, C1 → Confidentiality, P → Privacy). The total of every status column across all rows equals the number of controls evaluated, with no double counting.
+- Count each control once. The **counting criterion** is the first criterion on its TSC line that belongs to an in-scope category; its series decides the category row (CC → Security, A1 → Availability, PI1 → Processing integrity, C1 → Confidentiality, P → Privacy). Example: AV-03 (A1.2, PI1.5) counts under Availability when availability is in scope, and under Processing integrity when only processing_integrity is. When the counting criterion is not the first one on the TSC line, mark the row with a footnote "in scope via secondary criterion <TSC>". The total of every status column across all rows equals the number of controls in scope, with no double counting, and only in-scope categories get a row.
 
 ## Output
 
@@ -54,7 +55,7 @@ Write `docs/soc2/type1-readiness.md` in the user's repo (title it "Implementatio
 ### Full result (repo has IaC, CI, or application code)
 
 1. Report (as-of) date or check date, scope (from state), and the disclaimer above.
-2. **Summary counts by primary criterion category**: one row per in-scope category with columns `designed | partial | missing | needs-evidence | n/a | Total`, plus a final **Total** row. The grand total equals the number of in-scope controls.
+2. **Summary counts by counting-criterion category** (Rules, "Count each control once"): one row per in-scope category with columns `designed | partial | missing | needs-evidence | n/a | Total`, plus a final **Total** row. The grand total equals the number of in-scope controls.
 3. **Code-visible controls matrix**, one row per control:
 
    | ID | Title | TSC | Status | Basis (file:line or signal) | Fix |
@@ -63,14 +64,15 @@ Write `docs/soc2/type1-readiness.md` in the user's repo (title it "Implementatio
 
    The TSC column uses the `ID → TSC` arrow form for every criterion on the control's TSC line.
 4. **Needs human evidence**: org-only controls grouped by owner role, each with the artifact to collect. Group several controls under one artifact where one document covers them.
-5. **N/A controls** with their reasons.
+5. **N/A controls** with their reasons, including every `state.excluded` control with its stored reason and date.
 
 ### Build-first roadmap (empty or no-IaC branch)
 
 1. Header with the date, scope, the disclaimer, and one sentence: "No infrastructure or CI was found, so a control-by-control matrix would be all red; this is the order to build in."
 2. A numbered list of about 15 controls to build first, chosen from the in-scope index rows: things that cannot be backfilled and that every later control depends on come first (identity with MFA and SSO, cloud audit trail and central logging with retention, branch protection with required review and CI, secrets management, encryption, backups, vulnerability scanning, incident response plan, then the org-only items an auditor asks about first: policies, access reviews, vendor inventory). For each: `<ID> → <TSC>`, one line on what to build (use the cloud names for `system.cloud`), and an owner role.
-3. A line stating the number of in-scope controls not on the list and where to find them (`../soc2/references/control-index.md`).
-4. Offer the next step: design the system with `soc2-architect` or scaffold the listed items, then re-run this check.
+3. **Built so far** (only when application source exists): one row per control the existing files touch, using the matrix columns of the full result; the Basis column gives `file:line` for each defect found (for example a hardcoded key in `local.settings.json:7`, a handler with no input validation in `src/ingest.ts:42`).
+4. A line stating the number of in-scope controls not on the list and where to find them (`../soc2/references/control-index.md`). Controls in `state.excluded` are not counted as missing and are not listed.
+5. Offer the next step: design the system with `soc2-architect` or scaffold the listed items, then re-run this check.
 
 ## Finish
 
