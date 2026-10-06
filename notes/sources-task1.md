@@ -20,3 +20,8 @@
 
 - Sampling table is common auditor practice as given in the brief, not AICPA mandate.
 - Remediation SLAs (15/30/90 days), 24h deprovisioning, 365-day log retention, TLS 1.2+ are common industry baselines chosen for concreteness; auditors accept the entity's documented values if consistently met.
+
+## Task 8
+
+- claude-skills (MIT, Copyright (c) 2025 Alireza Rezvani): `compliance-os/skills/soc2-audit-prep/SKILL.md` and `compliance-os/agents/cs-soc2-auditor.md`. Ideas used, all text rewritten: observation-period discipline (skipped cycles, mid-period control changes, evidence from the first month rather than only the last), sample-driven testing, and the rule that the assessor does not produce the report itself (CPA firm only). PBC items come from the catalog's own `Evidence` fields; finding phrasing (condition/criteria/cause/effect) is standard audit practice written fresh.
+- The sources' "1-2 exceptions tolerated, 3+ is a finding" threshold is firm-specific and was not adopted; the skill uses catalog Pass rules only.
